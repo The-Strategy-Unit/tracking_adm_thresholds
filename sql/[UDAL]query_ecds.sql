@@ -1,4 +1,11 @@
-SELECT 
+/*
+README 
+This script is used to query [UDAL_Warehouse].[MESH_ECDS].[EC_Core]
+which is the "faster (submission)" version of the ECDS on UDAL.
+This is the primary query for the project. 
+*/
+
+SELECT
       [EC_Ident]
       /* 
      ,[EC_Load_Id]
@@ -103,34 +110,29 @@ SELECT
       ,[HES_CCG_From_General_Practice]
       ,[HES_Responsible_CCG_Value]
       ,[HES_Responsible_CCG_Origin]
-         */
       ,[Attendance_Unique_Identifier]
-      /* 
       ,[Site_Code_of_Treatment]
       ,[Attendance_Postcode_District]
       ,[Attendance_Government_Office_Region]
       ,[Attendance_SHA_Provider]
       ,[Attendance_HES_CCG_From_Treatment_Site_Code]
       ,[Attendance_HES_CCG_From_Treatment_Origin]
-       */
       ,[EC_Department_Type]
-         /*
       ,[Attendance_LSOA_Provider_Distance]
       ,[Attendance_LSOA_Provider_Distance_Origin]
-
+      */
       ,[Attendance_LSOA_Treatment_Site_Distance]
+      /*
       ,[Attendance_LSOA_Treatment_Site_Distance_Origin]
       ,[EC_Attendance_Number]
       ,[Arrival_Date]
       ,[Arrival_Time]
-      */
       ,[Arrival_Month] 
+      */
       ,[EC_Arrival_Mode_SNOMED_CT]
          /*
       ,[Arrival_Mode_Approved]
-       */
       ,[EC_AttendanceCategory]
-         /*
       ,[Arrival_Planned]
       ,[Ambulance_Incident_Number]
       ,[Org_Code_Ambulance_Trust]
@@ -196,9 +198,7 @@ SELECT
       ,[SUS_Code_Cleaning_Applied]
       ,[SUS_HRG_Code]
       ,[SUS_Costing_Period]
-       */
       ,[SUS_Excluded]
-         /*
       ,[SUS_Tariff]
       ,[SUS_Tariff_Description]
       ,[SUS_MFF]
@@ -219,9 +219,7 @@ SELECT
       ,[DQ_Primary_Diagnosis_Expected]
       ,[DQ_Primary_Diagnosis_Completed]
       ,[DQ_Primary_Diagnosis_Valid]
-       */
       ,[Exclusions]
-         /*
       ,[Reason_For_Access]
        */
       ,[Der_Pseudo_NHS_Number]
@@ -233,13 +231,17 @@ SELECT
       /*, [Der_Activity_Month]*/
       ,[Der_Financial_Year]
       /* ,[Der_Number_AEA_Diagnosis]
+      */
       ,[Der_Number_EC_Diagnosis]
+      /*
       ,[Der_Number_AEA_Investigation]
       ,[Der_Number_EC_Investigation]
       ,[Der_Number_AEA_Treatment]
       ,[Der_Number_EC_Treatment]
       ,[Der_AEA_Diagnosis_All]
+       */
       ,[Der_EC_Diagnosis_All]
+       /*
       ,[Der_AEA_Investigation_All]
       ,[Der_EC_Investigation_All]
       ,[Der_AEA_Treatment_All]
@@ -258,13 +260,12 @@ SELECT
       ,[Der_Postcode_LSOA_Code]
          /*
       ,[Der_Postcode_MSOA_Code]
-      ,[Der_Postcode_Constituency_Code]*/
+      ,[Der_Postcode_Constituency_Code]
       ,[Der_Dupe_Flag]
-      /*
       ,[Der_Record_Type]
       ,[Der_Pseudo_Patient_Pathway_ID]
-      */
       ,[Der_AEA_Patient_Group]
+      */
       ,[Der_Postcode_LSOA_2011_Code]
          /*
       ,[Der_Postcode_MSOA_2011_Code]
@@ -280,38 +281,32 @@ SELECT
       ,[Clinical_Disease_Notification_Code]
       ,[Clinical_Disease_Notification_Description]
       ,[Ethnic_Category_2021]
-      */
       ,[Deleted]
-      /* 
       ,[pseudo_nhs_number_pet]
       ,[UDALFileID]
       */
   FROM [MESH_ECDS].[EC_Core]
   WHERE 1 = 1
-    AND [Der_EC_Arrival_Date_Time] >= '2025-04-01 00:00:00.000'
-    /* PROVISIONAL:*/
-    /* [SUS_Excluded] CAN BE PAIRED WITH [Exclusions] FOR REASON:*/
+    AND [Der_EC_Arrival_Date_Time] >= '2025-01-01 00:00:00.000'
+    
+    /* PROVISIONAL CLAUSES - TO BE CHECKED :*/
+
+    /* NOTE: [SUS_Excluded] CAN BE PAIRED WITH [Exclusions] TO GIVE REASON:*/
     AND [SUS_Excluded] = 'False'
+    AND [Der_Dupe_Flag] = 0
+    
     AND [EC_Department_Type] = '01'
-    AND [Sex] IN ('1', '2')
-    /* AN UNPLANNED FIRST (NOT FOLLOW UP / UNKNOWN):*/
+    
+    /* AN UNPLANNED FIRST (I.E. NOT FOLLOW-UP / UNKNOWN):*/
     AND [EC_AttendanceCategory] = '1'
+    
+    AND [Sex] IN ('1', '2')
+    AND [Der_Age_At_CDS_Activity_Date] BETWEEN 0 AND 110
+    
     /* NOT (BROUGHT IN DEAD OR DIED DURING ATTENDANCE):*/
     AND (
       NOT ([Der_AEA_Patient_Group] = '70' OR [Discharge_Destination_SNOMED_CT] = '305398007') 
       )
-/* TODO: ARRIVAL MODE ? */
-/* TODO: DISCHARGE STATUS - RERUN WITH EXCLUSIONS AND CHECK COUNTS IN THIS FIELD.
-MAY HAVE TO GO BACK TO NCDR AND GET CONVERSIONS - IF REFERENCE LOOKUP NOT GOOD */
-
-    AND -- DURING ATTENDANCE DID NOT LEAVE / UNKNOWN DISPOSAL / NOT STREAMED PATIENTS (GENERALLY)
-      (
-      DischargeStatusDescription = 'Treatment completed (situation)'
-      OR DischargeStatusDescription = 'Streamed to emergency department following initial assessment (situation)'
-      )
-    /* AND Age_At_Arrival IS NOT NULL */
-    AND Der_Dupe_Flag = 0
-    AND LEFT(Der_Provider_Code, 1) = 'R'
-
-
-
+      
+    /*TREATMENT COMPLETED (CHECK WHETHER TO ALSO INCLUDE NULLs):*/
+    AND [EC_Discharge_Status_SNOMED_CT] = '182992009'
