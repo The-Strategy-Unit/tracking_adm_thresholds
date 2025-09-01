@@ -294,6 +294,7 @@ SELECT
     /* NOTE: [SUS_Excluded] CAN BE PAIRED WITH [Exclusions] TO GIVE REASON:*/
     AND [SUS_Excluded] = 'False'
     AND [Der_Dupe_Flag] = 0
+    AND [Finished_Indicator] = 1
     
     AND [EC_Department_Type] = '01'
     
