@@ -12,7 +12,11 @@ SELECT
       WHEN [SNOMED_Description] IS NULL
       AND [SNOMED_UK_Preferred_Term] IS NULL THEN [SNOMED_TERM]
       ELSE [SNOMED_Description]
-   END AS 'DERIVED_SNOMED_DESCR'
+   END AS 'DERIVED_SNOMED_DESCR',
+   [ECDS_GROUP3],
+   [ECDS_GROUP2],
+   [ECDS_GROUP1],
+   [Created_Date]
 /*
    ,[ECDS_Description]
    ,[SNOMED_Description]
