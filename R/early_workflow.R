@@ -22,8 +22,8 @@ library("lubridate")
 
 options(scipen=999) 
 
-server <- ""
-db <- ""
+# server <- ""
+# db <- ""
 
 con_test <- DBI::dbConnect(
   odbc::odbc(),
@@ -146,6 +146,17 @@ df_ref_trimmed <- df_ref |>
   select(snomed_code, derived_snomed_descr)
 
 
+df_ref_diagnosis <- df_reference_raw |>
+  mutate(sheet_name = str_to_lower(sheet_name)) |>
+  filter(str_detect(sheet_name, "diagnosis$")) |> 
+  arrange(desc(created_date)) |>
+  group_by(snomed_code) |>
+  # TAKE MOST RECENT LOOKUPS:
+  filter(row_number() == 1) |>
+  ungroup() |>
+  select(-created_date) |>
+  rename(diag_descr_snomed = derived_snomed_descr)
+
 # ___________----
 
 
@@ -166,6 +177,8 @@ lkp_ethref_raw <- dbGetQuery(con_test, query_ethref) |>
 gc()
 gc()
 gc()
+
+
 # ___________----
 
 # xi. DQ OV.ALL ---------------------------------------------------------------
