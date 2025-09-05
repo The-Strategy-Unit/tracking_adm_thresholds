@@ -34,26 +34,20 @@ df_where_exclusions <- readRDS(here("data", "where_exclusion_matrix.rds"))
 
 df_where_exclusions |> 
   filter(procode == "RC9") |> 
-  # print(n=40)
-  identity() |> 
-  select(-p) |> 
   mutate(sigma = sum(n)) |>
   rowwise() |> 
-  mutate(flag_sum = sum(c_across(c(everything(), -c(procode, n, sigma))))) |> 
+  mutate(flag_sum = sum(c_across(c(everything(), -c(procode, n, p, sigma))))) |> 
   ungroup() |> 
   # REMOVE THE ROW CORRESPONDING TO ATTENDANCES FOLLOWING ALL EXCLUSIONS:
   filter(flag_sum != 0) |> 
-  mutate(n_after_excl = sigma - cumsum(n) , .before = flag_sum) |> 
-  mutate(n_before_excl = n_after_excl + n, .before = n) |> 
-  select(-sigma) |> 
+  mutate(n_after_excl = sigma - cumsum(n)) |> 
+  mutate(n_before_excl = n_after_excl + n) |> 
+  select(-c(sigma, p)) |> 
   rename(n_excl = n) |> 
+  relocate(c(n_before_excl, n_excl, n_after_excl), .after = flag_sum) |> 
   # print(n=40)
-  view("large")
-
-
-
+  view("where")
 
 # ALL PROVIDERS:
 
 
-# THEN DATA QUALITY
