@@ -39,7 +39,7 @@ left_join(
 param_provider_choice <- "RYR" # SUSSEX
 # param_provider_choice <- "RC9" # BEDFORD
 
-# 4. BEGIN ----------------------------------------------------------------------
+# 4. PREP 1----------------------------------------------------------------------
 
 df_1 <- df_ecds_raw  |> 
   filter(der_provider_code == param_provider_choice) |>
@@ -65,7 +65,9 @@ gc()
 # ________----
 
 
-# 5. DIAG ENCODING -----------------------------------------------
+## a. ENCODING -------------------------------------------------------------
+
+### i. diagnosis -----------------------------------------------
 
 tmp_diag_prep_l3 <- df_1 |> 
   left_join(df_ref_diagnosis, join_by(diag01_code == snomed_code)) |> 
@@ -122,10 +124,7 @@ lkp_diag <- bind_rows(
 df_1_plus_diag <- df_1 |>
   left_join(lkp_diag, join_by(diag01_code))
 
-
-# ________----
-
-# 6. ENCODING OTHER VARIABLES -----------------------------------------------------------
+### ii. other variables -----------------------------------------------------------
 
 df_model_prep_part_1_of_2 <- df_1_plus_diag |>
   mutate(ref_acuity = str_remove_all(ref_acuity, " level emergency care")) |>
@@ -159,13 +158,13 @@ df_model_prep_part_1_of_2 <- df_1_plus_diag |>
     is.na(ref_attsrc) ~ "other",
     TRUE ~ "other"
   )) |>
-  # TODO ONLY EMERGENGY AMBULANCES ??
+  # QUESTION ONLY EMERGENGY AMBULANCES ??
   mutate(arrmode_ambulance = case_when(
     ref_arrmode %in% c("Arrival by emergency road ambulance", "Arrival by non-emergency road ambulance", "Arrival by emergency road ambulance with medical escort") ~ "1",
     is.na(ref_arrmode) ~ "0",
-    # ref_arrmode == "Arrival by public transport" ~ "public_trans",
     TRUE ~ "0"
   )) |> 
+    # ref_arrmode == "Arrival by public transport" ~ "public_trans",
   left_join(lkp_ethref_raw, join_by(ethnic_category == code)) |>
   mutate(imd_quint = as.character(
     round_half_up(
@@ -174,7 +173,8 @@ df_model_prep_part_1_of_2 <- df_1_plus_diag |>
   )) |>
   mutate(imd_quint = if_else(is.na(imd_quint), "NA", imd_quint)) |>
   rename(age = der_age_at_cds_activity_date) |>
-  mutate(year_month = yearmonth(der_ec_arrival_date_time)) |>
+  # mutate(year_month = yearmonth(der_ec_arrival_date_time)) |>
+  mutate(year_week = yearweek(der_ec_arrival_date_time)) |>
   mutate(wkend = if_else(
     wday(der_ec_arrival_date_time, week_start = 1) %in% 6:7,
     1, 0
@@ -184,11 +184,18 @@ df_model_prep_part_1_of_2 <- df_1_plus_diag |>
     0, 1
   )) 
 
+# df_model_prep_part_1_of_2 |> 
+#   mutate(yearweek("2025-01-06"))
+#   count(year_week, wkend)
+
+# as_date(yearweek("2025-01-08"))
+
+
 # ________----
 
-# 7. DATA QUAL -------
+# 5. DATA QUAL 1-------
 
-## a. where clasue exclusion details ----------------------------------
+## a. where clause exclusion details ----------------------------------
 
 # TODO RE-RUN WHERE CLAUSE SQL SCRIPT
 readRDS(here("data", "where_exclusion_matrix.rds")) |> 
@@ -226,25 +233,38 @@ df_model_prep_part_1_of_2 |>
   NULL
 
 # TODO THEN CHOOSE:
+# OFFER ONLY SUNDAY DATES (WEEK ENDING) TO CHOOSE FROM
+# AS IT HAPPENS LAST DAY OF AUG WAS SUNDAY.
+
+# ________----
+
+
+# 6. PREP 2 --------------------------------------------------------
+
+# BASED ON ASSESSMENT OF ABOVE DQ:
 param_date_cutoff <- "2025-08-31"
 # WE MIGHT WANT A DEFAULT 
 # (NOTE BY 5TH SEPTEM AUG SEEMS COMPLETE FOR SOME PROVS)
 
+# as_date(yearweek(param_date_cutoff)) - days(1)
 
-### i. prep part 2 --------------------------------------------------------
 
 # (REQUIRED BEFORE MOVING TO FURTHER DQ CHECKS)
 
 df_model_prep_part_2_of_2 <- df_model_prep_part_1_of_2 |> 
-  filter(as_date(year_month) <= as_date(param_date_cutoff)) |> 
+  ##### DATE RELATED SELECTIONS:
+  filter(year_week <= yearweek(param_date_cutoff)) |> 
+  # THE 7TH JAN ...
+  filter(year_week >= yearweek("2025-01-07")) |> 
+  #####
   mutate(across(c(everything(), -age), ~ as.factor(.))) |>
   # SET REF CATEGORY FOR DIAGNOSIS and OTHER CATS: (HIGH VOLUME, MODERATE EFFECT)
   mutate(diag01 = fct_relevel(diag01, "l3_lower_respiratory_tract_infection")) |> 
   mutate(ref_acuity = fct_relevel(ref_acuity, "Standard")) |> 
   mutate(ethnic_grp_sus = fct_relevel(ethnic_grp_sus, "British, Mixed British")) |> 
   mutate(referral_source = fct_relevel(referral_source, "self")) |> 
-  # SET REF CATEGORY FOR YEAR_MONTH:
-  mutate(year_month = fct_relevel(year_month, "2025 May")) |> 
+  # SET REF CATEGORY FOR YEAR_MONTH (SECOND WEEK OF CALENDAR YEAR):
+  mutate(year_week = fct_relevel(year_week, as.character(yearweek("2025-01-08")))) |>
   # TRIM DOWN:
   # select(
   #   admitted,
@@ -257,9 +277,13 @@ df_model_prep_part_2_of_2 <- df_model_prep_part_1_of_2 |>
   identity()
 
 
-# levels(df_model_prep$year_month)
+levels(df_model_prep_part_2_of_2$year_week)
 # levels(df_model_prep$diag01)
 # df_model_prep |> glimpse()
+
+# ________----
+
+# 7. DATA QUAL 2-------
 
 ## c. regressor dq ----------------------------------------------------
 
@@ -311,12 +335,12 @@ df_model_prep_part_2_of_2 |>
 
 # ________----
 
-# 8. MODEL  -----------------------------------------------------------
+# 7. MODEL  -----------------------------------------------------------
 
 mod <- mgcv::gam(
   formula = admitted ~ 
     # # VAR OF INTEREST:
-    year_month +    
+    year_week +    
     # CASE-MIX (DEMOGRAPHICS):
     s(age, by = sex) + sex + imd_quint + ethnic_grp_sus +
     # CASE-MIX (MEDICAL):
@@ -332,10 +356,10 @@ mod <- mgcv::gam(
 
 # mod <-  get(str_c("mod_", param_provider_choice))
 
-saveRDS(mod, here("data", str_c("tmp_mod_", param_provider_choice,".rds")))
+saveRDS(mod, here("data", str_c("tmp_mod_wk_", param_provider_choice,".rds")))
 # ________----
 
-# 9. RESULTS --------------------------------------------------------------
+# 8. RESULTS --------------------------------------------------------------
 
 mod |> broom::glance()
 
@@ -356,13 +380,13 @@ results <- mod |>
 
 results |> 
   select(term, ..odds__ = odds, ..lci__ = lci, ..uci__ = uci, significance) |>
-  print(n=100)
+  print(n=150)
 
 
 
 # ________----
 
-# 10. PLOT --------------------------------------------------------------
+# 9. PLOT --------------------------------------------------------------
 
 lkp_month <- month(1:12, label = T) |> 
   enframe() |> 
@@ -370,7 +394,41 @@ lkp_month <- month(1:12, label = T) |>
   mutate(term = str_c("year_month", yr, " ", value)) |> 
   mutate(date = make_date(yr, name, 1)) |> 
   select(term, date)
+
+week(1)
+
+# TODO WEEK BEGINNING AS BELOW, OR ENDING?
+lkp_week <- seq(ymd("2025-01-06"), ymd("2025-12-31"), by = "1 week") |> 
+  enframe(name = NULL, value = "date") |> 
+  mutate(term = yearweek(date)) |> 
+  mutate(term = str_c("year_week", term)) 
   
+
+# NEW ---------------------------------------------------------------------
+
+results |> 
+  select(term, estimate) |> 
+  filter(str_detect(term, "year_week")) |>
+  left_join(lkp_week, join_by(term)) |> 
+  add_row(estimate = 0, date = as_date("2025-01-06")) |> 
+  ggplot(aes(date, estimate))+
+  # geom_hline(aes(yintercept = med_odds), lty = "dashed")+
+  geom_point()+
+  geom_line()+
+  theme_minimal()+
+  # scale_y_log10()+
+  theme(axis.title = element_text(size = 9))+
+  scale_x_date(date_breaks = "month", date_labels = "%b %Y")+
+  labs(
+    x = "\nDate",
+    y = str_c(
+      "Casemix-adjusted odds of admission (",
+      param_provider_choice, ")\n(Reference category: w/c Jan 6th 2025)\n"
+    )
+  )
+  
+  
+
 # TODO: INCLUDE REFERENCE CAT IN MEDIAN OR NOT????
 # RUN CHART:
 results |> 
