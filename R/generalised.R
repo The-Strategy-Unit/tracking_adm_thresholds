@@ -2,6 +2,7 @@
 # Run early workflow 1-3 and then:
 
 
+
 # i. rough provider dq ----------------------------------------------------
 
 left_join(
@@ -35,7 +36,8 @@ left_join(
 
 # ________----
 
-param_provider_choice <- "RYR" # "RBK"
+param_provider_choice <- "RYR" # SUSSEX
+# param_provider_choice <- "RC9" # BEDFORD
 
 # 4. BEGIN ----------------------------------------------------------------------
 
@@ -187,21 +189,21 @@ df_model_prep_part_1_of_2 <- df_1_plus_diag |>
 # 7. DATA QUAL -------
 
 ## a. where clasue exclusion details ----------------------------------
-# TODO RE-RUN WHERE CLAUSE SQL SCRIPT
 
+# TODO RE-RUN WHERE CLAUSE SQL SCRIPT
 readRDS(here("data", "where_exclusion_matrix.rds")) |> 
   filter(procode == param_provider_choice) |> 
   mutate(sigma = sum(n)) |>
   rowwise() |> 
-  mutate(flag_sum = sum(c_across(c(everything(), -c(procode, n, p, sigma))))) |> 
+  mutate(row_sum = sum(c_across(c(everything(), -c(procode, n, p, sigma))))) |> 
   ungroup() |> 
   # REMOVE THE ROW CORRESPONDING TO ATTENDANCES FOLLOWING ALL EXCLUSIONS:
-  filter(flag_sum != 0) |> 
+  filter(row_sum != 0) |> 
   mutate(n_after_excl = sigma - cumsum(n)) |> 
   mutate(n_before_excl = n_after_excl + n) |> 
   select(-c(sigma, p)) |> 
   rename(n_excl = n) |> 
-  relocate(c(n_before_excl, n_excl, n_after_excl), .after = flag_sum) |> 
+  relocate(c(n_before_excl, n_excl, n_after_excl), .after = row_sum) |> 
   # print(n=40)
   view("where")
 
@@ -223,6 +225,7 @@ df_model_prep_part_1_of_2 |>
   scale_x_date(date_breaks = "2 weeks")+
   NULL
 
+# TODO THEN CHOOSE:
 param_date_cutoff <- "2025-08-31"
 # WE MIGHT WANT A DEFAULT 
 # (NOTE BY 5TH SEPTEM AUG SEEMS COMPLETE FOR SOME PROVS)
@@ -243,14 +246,15 @@ df_model_prep_part_2_of_2 <- df_model_prep_part_1_of_2 |>
   # SET REF CATEGORY FOR YEAR_MONTH:
   mutate(year_month = fct_relevel(year_month, "2025 May")) |> 
   # TRIM DOWN:
-  select(
-    admitted,
-    age, sex, ethnic_grp_sus, imd_quint,
-    diag01, ref_acuity, arrmode_ambulance, referral_source, # ec_chief_complaint_snomed_ct, #!!
-    year_month,
-    wkend,
-    night_time_8to8
-  )
+  # select(
+  #   admitted,
+  #   age, sex, ethnic_grp_sus, imd_quint,
+  #   diag01, ref_acuity, arrmode_ambulance, referral_source, # ec_chief_complaint_snomed_ct, #!!
+  #   year_month,
+  #   wkend,
+  #   night_time_8to8
+  # )
+  identity()
 
 
 # levels(df_model_prep$year_month)
@@ -273,7 +277,7 @@ df_model_prep_part_2_of_2 |>
   )) |>
   names() |>
   map(
-    ~ count(df_model_prep, .data[[.x]], sort = T) |>
+    ~ count(df_model_prep_part_1_of_2, .data[[.x]], sort = T) |>
       mutate(p = n / sum(n))
   ) |> 
   map(list(.%>% mutate(var = (names(.))[1]))) |> 
@@ -399,15 +403,15 @@ results |>
 
 
 # # TIMESERIES WITH CONFINT:
-# results |> 
+# results |>
 #   select(term, odds, lci, uci) |>
 #   filter(str_detect(term, "year_month")) |>
-#   left_join(lkp_month, join_by(term)) |> 
+#   left_join(lkp_month, join_by(term)) |>
 #   add_row(odds = 1, date = as_date("2025-05-01")) |>
-#   mutate(med_odds = median(odds)) |> 
+#   mutate(med_odds = median(odds)) |>
 #   ggplot(aes(date, odds))+
 #   geom_hline(yintercept = 1, lty = "dashed")+
-#   geom_pointrange(aes(ymin = lci, ymax = uci), colour = "grey80", size = 0.4) +
+#   geom_pointrange(aes(ymin = lci, ymax = uci), colour = "grey50", size = 0.4) +
 #   geom_point()+
 #   # geom_line()+
 #   theme_minimal()+
@@ -418,5 +422,5 @@ results |>
 #     x = "\nDate",
 #     y = "Casemix-adjusted odds of admission\n"
 #     )
-    
-  
+#     
+#   
