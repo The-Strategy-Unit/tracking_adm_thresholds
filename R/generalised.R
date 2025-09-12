@@ -1,69 +1,77 @@
 # README
 # Run early workflow 1-3 and then:
 
-# i. rough provider dq ----------------------------------------------------
-
-calc_perc_na <- function(x) {
-  df_ecds_raw |> 
-    count(der_provider_code, valid = !is.na({{x}})) |> 
-    group_by(der_provider_code) |> 
-    mutate("p_{{x}}" := n/sum(n)) |> 
-    ungroup() |> 
-    filter(valid == TRUE) |> 
-    rename_with( 
-      ~str_remove_all(. , "ec_|_snomed_ct|der_ec_|nosis_all"),
-      starts_with("p_ec_") | starts_with("p_der_ec")
-      ) |> 
-    select(-c(valid, n))
-}
-
-
-df_model_specs_prep <- calc_perc_na(der_ec_diagnosis_all) |> 
-  left_join(calc_perc_na(ec_acuity_snomed_ct), join_by(der_provider_code)) |> 
-  left_join(calc_perc_na(ec_chief_complaint_snomed_ct), join_by(der_provider_code)) |> 
-  left_join(calc_perc_na(ec_arrival_mode_snomed_ct), join_by(der_provider_code)) |> 
-  left_join(calc_perc_na(ec_attendance_source_snomed_ct), join_by(der_provider_code)) |> 
-  rename(
-    p_complnt = p_chief_complaint,
-    p_arrmode = p_arrival_mode,
-    p_refsorc =p_attendance_source
-    ) |> 
-  # mutate(across(starts_with("p"), ~ median(., na.rm = T)))
-  mutate(mod_spec = case_when(
-    p_diag >= 0.85 & p_acuity >= 0.85 & p_arrmode >= 0.85 & p_refsorc >= 0.85 ~ "A", # FULL MODEL
-    p_diag >= 0.80 & p_acuity >= 0.85 ~ "B", # LOWER DIAG THRESHOLD, REMOVE ARRIVAL AND REF SORCE
-    p_complnt >= 0.85 & p_acuity >= 0.85 ~ "C", # COMPLAINT AND ACUITY
-    p_arrmode >= 0.80 ~ "D", # ARRIVAL MODE
-    TRUE ~ "E" # AGE SEX
-  )) |> 
-  # count(mod_spec)
-  identity()
-  
-# df_model_specs_prep |> filter(mod_spec == "D")
-  
-df_model_specs <- df_model_specs_prep |> 
-  select(der_provider_code, mod_spec) |> 
-  mutate(formula = case_when(
-    mod_spec == "A" ~ "admitted ~ year_week + s(age, by = sex) + sex + imd_quint + ethnic_grp_sus + diag01 + arrmode_ambulance + acuity + referral_source + wkend + night_time_8to8",
-    mod_spec == "B" ~ "admitted ~ year_week + s(age, by = sex) + sex + imd_quint + ethnic_grp_sus + diag01 + acuity + wkend + night_time_8to8",
-    mod_spec == "C" ~ "admitted ~ year_week + s(age, by = sex) + sex + imd_quint + ethnic_grp_sus + complaint + acuity + wkend + night_time_8to8",
-    mod_spec == "D" ~ "admitted ~ year_week + s(age, by = sex) + sex + imd_quint + ethnic_grp_sus + arrmode_ambulance + wkend + night_time_8to8",
-    mod_spec == "E" ~ "admitted ~ year_week + s(age, by = sex) + sex + imd_quint + ethnic_grp_sus + wkend + night_time_8to8",
-    T ~ NA_character_
-  ))
-
+source(here("R", "funs.R"))
 
 # USE R1H AS TEST CASE FOR LESS GOOD DQ
 
 # ________----
 
-param_provider_choice <- "RYR" # SUSSEX
-# param_provider_choice <- "RC9" # BEDFORD
+param_provider <- "RXR" # EAST LANCS
+# param_provider <- "R1H" # BARTS D
+# param_provider <- "RJ7" # UH ST. GEORGE'S (C)
+# param_provider <- "RYR" # SUSSEX A 
+# param_provider <- "RC9" # BEDFORD A
+
+# A. SPECIFY MODEL FORMULA BASED ON DATA QUAL ---------------------------
+
+# A PROVIDER'S MIN DATA QUAL FOR ANY WEEK: 
+# df_model_specs_prep <- 
+  calc_perc_na_weekly(der_ec_diagnosis_all) |> 
+  left_join(calc_perc_na_weekly(ec_acuity_snomed_ct), join_by(der_provider_code)) |> 
+  left_join(calc_perc_na_weekly(ec_chief_complaint_snomed_ct), join_by(der_provider_code)) |> 
+  left_join(calc_perc_na_weekly(ec_arrival_mode_snomed_ct), join_by(der_provider_code)) |> 
+  left_join(calc_perc_na_weekly(ec_attendance_source_snomed_ct), join_by(der_provider_code)) |> 
+  rename(
+    p_complnt = p_chief_complaint,
+    p_arrmode = p_arrival_mode,
+    p_refsorc =p_attendance_source
+  ) |> 
+  # calc_perc_na(der_ec_diagnosis_all) |> 
+  # left_join(calc_perc_na(ec_acuity_snomed_ct), join_by(der_provider_code)) |> 
+  # left_join(calc_perc_na(ec_chief_complaint_snomed_ct), join_by(der_provider_code)) |> 
+  # left_join(calc_perc_na(ec_arrival_mode_snomed_ct), join_by(der_provider_code)) |> 
+  # left_join(calc_perc_na(ec_attendance_source_snomed_ct), join_by(der_provider_code)) |> 
+  # rename(
+  #   p_complnt = p_chief_complaint,
+  #   p_arrmode = p_arrival_mode,
+  #   p_refsorc =p_attendance_source
+  #   ) |> 
+  # ASSUMING SOME CORRELATION BETWEEN ARRMODE AND ACUITY
+  mutate(mod_spec = case_when(
+    p_diag >= 0.85 & p_acuity >= 0.85 & p_arrmode >= 0.85 & p_refsorc >= 0.85 ~ "A", # FULL MODEL
+    p_diag >= 0.80 & p_arrmode >= 0.85 ~ "B", # LOWER DIAG THRESHOLD, REMOVE ACUITY AND REF SORCE
+    p_complnt >= 0.80 & p_acuity >= 0.80 ~ "C", # COMPLAINT AND ACUITY
+    p_arrmode >= 0.80 ~ "D", # ARRIVAL MODE
+    TRUE ~ "E" # AGE SEX
+  )) |> 
+  count(mod_spec) |> mutate(p = n/sum(n)) |>
+  identity()
+  
+# df_model_specs_prep |> filter(mod_spec == "D") |> print(n=50)
+df_provider_mod_spec <- df_model_specs_prep |> 
+  filter(der_provider_code == param_provider)
+  
+df_model_specs <- df_model_specs_prep |> 
+  select(der_provider_code, mod_spec) |> 
+  mutate(model_formula = case_when(
+    mod_spec == "A" ~ "ed_discharged ~ year_week + s(age, by = sex) + sex + imd_quint + ethnic_grp_sus + diag01 + arrmode_ambulance + acuity + referral_source + wkend + night_time_8to8",
+    mod_spec == "B" ~ "ed_discharged ~ year_week + s(age, by = sex) + sex + imd_quint + ethnic_grp_sus + diag01 + arrmode_ambulance + wkend + night_time_8to8",
+    mod_spec == "C" ~ "ed_discharged ~ year_week + s(age, by = sex) + sex + imd_quint + ethnic_grp_sus + complaint + acuity + wkend + night_time_8to8",
+    mod_spec == "D" ~ "ed_discharged ~ year_week + s(age, by = sex) + sex + imd_quint + ethnic_grp_sus + arrmode_ambulance + wkend + night_time_8to8",
+    mod_spec == "E" ~ "ed_discharged ~ year_week + s(age, by = sex) + sex + imd_quint + ethnic_grp_sus + wkend + night_time_8to8",
+    T ~ NA_character_
+  ))
+
+vec_model_spec <- df_model_specs |> 
+  filter(der_provider_code == param_provider) |> 
+  pull(model_formula)
+
 
 # 4. PREP 1----------------------------------------------------------------------
 
 df_1 <- df_ecds_raw |> 
-  filter(der_provider_code == param_provider_choice) |>
+  filter(der_provider_code == param_provider) |>
   mutate(diag01_code = str_extract(der_ec_diagnosis_all, "^[^,]*")) |> 
   ### JOIN TO REFERENCE DF FOR TEXT DESRIPTION OF SNOMED CODES:
   left_join(df_ref_trimmed, join_by(ec_arrival_mode_snomed_ct == snomed_code)) |>
@@ -88,6 +96,9 @@ gc()
 
 ## a. ENCODING -------------------------------------------------------------
 
+if(
+  df_provider_mod_spec |> pull(mod_spec) %in% c("A", "B")
+) {
 ### i. diagnosis -----------------------------------------------
 
 tmp_diag_prep_l3 <- df_1 |> 
@@ -142,27 +153,32 @@ lkp_diag <- bind_rows(
 ) |>
   select(diag01_code, diag01)
 
-df_encoding_part_1_of_4 <- df_1 |>
-  left_join(lkp_diag, join_by(diag01_code))
-  
+df_encoding_part_1_of_3 <- df_1 |>
+  left_join(lkp_diag, join_by(diag01_code)) |> 
+  # SET REF CATEGORY FOR DIAGNOSIS: (HIGH VOLUME, MODERATE EFFECT)
+  mutate(diag01 = fct_relevel(diag01, "l3_lower_respiratory_tract_infection")) 
 
+} else if (
+  df_provider_mod_spec |> pull(mod_spec) == "C"
+) { 
 ### ii. chief complaint -----------------------------------------------------------
 # options(scipen = 999)
+
 
 # TODO IF WE WANTED TO IMPROVE MODEL, THERE ARE CERTAIN COMPLAINTS
 # WITH A VERY HIGH CHANCE OF ADMISSION. MAKE SURE THESE ARE UNGROUPED.
 # ALSO APPLICABLE TO DIAGNOSIS CODES.
 
 # df_encoding_part_3_of_4 |> 
-#   count(ref_chief_complaint, admitted, sort = T) |> 
+#   count(ref_chief_complaint, ed_discharged, sort = T) |> 
 #   group_by(ref_chief_complaint) |> 
 #   mutate(n_total = sum(n)) |> 
 #   mutate(p = n/sum(n)) |> 
 #   ungroup() |> 
 #   mutate(rank = dense_rank(desc(n_total))) |>
-#   complete(ref_chief_complaint, admitted) |> 
+#   complete(ref_chief_complaint, ed_discharged) |> 
 #   rename(p_adm = p) |> 
-#   filter(admitted == 1) |> 
+#   filter(ed_discharged == 1) |> 
 #   arrange(-p_adm) |> 
 #   mutate(p = n_total/sum(n_total, na.rm = T)) |> 
 #   # mutate(csp = cumsum(p)) |>
@@ -174,7 +190,7 @@ df_encoding_part_1_of_4 <- df_1 |>
 #   mutate(diag01 = janitor::make_clean_names(diag01)) |> 
 #   mutate(diag01 = str_c("l3_", diag01))
 
-tmp_complaint_prep <- df_encoding_part_1_of_4 |> 
+tmp_complaint_prep <- df_1 |> 
   count(ec_chief_complaint_snomed_ct, sort = T) |> 
   left_join(df_ref, join_by(ec_chief_complaint_snomed_ct == snomed_code)) |> 
   select(-n, everything(), n, -c(ecds_group3, ecds_group2)) |> 
@@ -199,15 +215,21 @@ lkp_complaint <- bind_rows(
   tmp_complaint_l1
 ) 
 
-df_encoding_part_2_of_4 <- df_encoding_part_1_of_4 |>
+df_encoding_part_1_of_3 <- df_1 |>
   left_join(lkp_complaint, join_by(ec_chief_complaint_snomed_ct))
+
+} else {
+  
+  df_encoding_part_1_of_3 <- df_1
+  
+} 
 
 ### iii. other variables -----------------------------------------------------------
 
-df_encoding_part_3_of_4 <- df_encoding_part_2_of_4 |>
+df_encoding_part_2_of_3 <- df_encoding_part_1_of_3 |>
   mutate(acuity = str_remove_all(ref_acuity, " level emergency care")) |>
   mutate(acuity = if_else(is.na(acuity), "NA", acuity)) |>
-  mutate(admitted = if_else(
+  mutate(ed_discharged = if_else(
     ref_disdest %in% c(
       "Discharge to ward",
       "Emergency department discharge to coronary care unit",
@@ -215,7 +237,7 @@ df_encoding_part_3_of_4 <- df_encoding_part_2_of_4 |>
       "Emergency department discharge to intensive care unit",
       "Emergency department discharge to operating theatre"
     ),
-    1, 0
+    0, 1
   )) |>
   mutate(referral_source = case_when(
     ref_attsrc %in% c("Referred by self", "Self-referral to accident and emergency department") ~ "self",
@@ -277,7 +299,7 @@ df_encoding_part_3_of_4 <- df_encoding_part_2_of_4 |>
 
 # TODO RE-RUN WHERE CLAUSE SQL SCRIPT
 readRDS(here("data", "where_exclusion_matrix.rds")) |> 
-  filter(procode == param_provider_choice) |> 
+  filter(procode == param_provider) |> 
   mutate(sigma = sum(n)) |>
   rowwise() |> 
   mutate(row_sum = sum(c_across(c(everything(), -c(procode, n, p, sigma))))) |> 
@@ -295,10 +317,14 @@ readRDS(here("data", "where_exclusion_matrix.rds")) |>
 
 ## b. date-related ---------------------------------------------------------
 
-# TIMESERIES OF LAST THREE MONTHS TO AID SELECTION OF CUT-OFF DATE:
-df_encoding_part_3_of_4 |> 
+# TIMESERIES OF ATTENDANCES FOR LAST FIVE MONTHS TO AID SELECTION OF CUT-OFF DATE:
+df_encoding_part_2_of_3 |> 
   count(date_dep = date(der_ec_departure_date_time)) |> 
-  filter(date_dep >= max(date_dep) - months(3)) |> 
+  # FROM FIVE MONTHS PRIOR TO TODAY:
+  filter(
+    date_dep >= as_date(Sys.time()) - months(5) &
+      date_dep <= as_date(Sys.time())
+    ) |> 
   mutate(wkday = as.factor(wday(date_dep, label = T, week_start = 1))) |> 
   ggplot() +
   geom_point(aes(date_dep, n, col = wkday)) +
@@ -307,37 +333,64 @@ df_encoding_part_3_of_4 |>
   scale_color_brewer()+
   theme_minimal() +
   geom_blank(aes(y=0))+
-  scale_x_date(date_breaks = "2 weeks")+
+  scale_x_date(date_breaks = "2 weeks",date_labels = "%d %b")+
   NULL
 
-# TODO THEN CHOOSE:
-# OFFER ONLY SUNDAY DATES (WEEK ENDING) TO CHOOSE FROM
-# AS IT HAPPENS LAST DAY OF AUG WAS SUNDAY.
+# TIMESERIES OF % ADMITTED FOR LAST FIVE MONTHS TO AID SELECTION OF CUT-OFF DATE:
+df_encoding_part_2_of_3 |> 
+  count(date_dep = date(der_ec_departure_date_time), ed_discharged) |> 
+  group_by(date_dep) |> 
+  mutate(p = n/sum(n)) |> 
+  ungroup() |> 
+  complete(date_dep, ed_discharged) |> 
+  filter(ed_discharged == 0) |> 
+  # FROM FIVE MONTHS PRIOR TO TODAY:
+  filter(
+    date_dep >= as_date(Sys.time()) - months(5) &
+      date_dep <= as_date(Sys.time())
+    ) |> 
+  mutate(wkday = as.factor(wday(date_dep, label = T, week_start = 1))) |> 
+  ggplot() +
+  geom_point(aes(date_dep, p, col = wkday)) +
+  geom_line(aes(date_dep, p), linewidth = 0.4)+
+  # geom_smooth(aes(date_dep, n), se = F) +
+  scale_color_brewer()+
+  theme_minimal() +
+  geom_blank(aes(y=0))+
+  scale_x_date(date_breaks = "2 weeks",date_labels = "%d %b")+
+  scale_y_continuous(labels = scales::percent)+
+  labs(x = "Date", y = "% Patients admitted")+
+  NULL
 
 # ________----
 
 
 # 6. PREP 2 --------------------------------------------------------
 
+
+# TODO THEN CHOOSE:
 # BASED ON ASSESSMENT OF ABOVE DQ:
+# OFFER ONLY SUNDAY DATES (WEEK ENDING) TO CHOOSE FROM
+# AS IT HAPPENS LAST DAY OF AUG WAS SUNDAY.
 param_date_cutoff <- "2025-08-31"
 # WE MIGHT WANT A DEFAULT 
-# (NOTE BY 5TH SEPTEM AUG SEEMS COMPLETE FOR SOME PROVS)
+
 
 # as_date(yearweek(param_date_cutoff)) - days(1)
 
 
 # (REQUIRED BEFORE MOVING TO FURTHER DQ CHECKS)
 
-df_encoding_part_4_of_4 <- df_encoding_part_3_of_4 |> 
+df_encoding_part_3_of_3 <- df_encoding_part_2_of_3 |> 
   ##### DATE RELATED SELECTIONS:
   filter(year_week <= yearweek(param_date_cutoff)) |> 
-  # THE 7TH JAN ...
+  # WE START FROM FIRST MONDAY OF THE YEAR.
+  # THE 7TH JAN WILL ALWAYS BE IN THE WEEK WE WANT TO START WITH.
   filter(year_week >= yearweek("2025-01-07")) |> 
   #####
-  mutate(across(c(everything(), -age), ~ as.factor(.))) |>
-  # SET REF CATEGORY FOR DIAGNOSIS and OTHER CATS: (HIGH VOLUME, MODERATE EFFECT)
-  mutate(diag01 = fct_relevel(diag01, "l3_lower_respiratory_tract_infection")) |> 
+  ## EXCLUDING DIAG AND COMPLAINT AS REF LEVEL ALREADY SPECIFIED:
+  mutate(across(c(everything(), - age, -starts_with("diag")), ~ as.factor(.))) |>
+  # SET REF LEVEL FOR OTHER CATS: (HIGH VOLUME, MODERATE EFFECT)
   mutate(acuity = fct_relevel(acuity, "Standard")) |> 
   mutate(ethnic_grp_sus = fct_relevel(ethnic_grp_sus, "British, Mixed British")) |> 
   mutate(referral_source = fct_relevel(referral_source, "self")) |> 
@@ -346,10 +399,18 @@ df_encoding_part_4_of_4 <- df_encoding_part_3_of_4 |>
   identity()
 
 
-# levels(df_encoding_part_4_of_4$year_week)
-# levels(df_model_prep$diag01)
-# df_model_prep |> glimpse()
+# df_encoding_part_3_of_3 |> glimpse()
+# # levels(df_encoding_part_4_of_4$year_week)
+# # levels(df_model_prep$diag01)
+# levels(df_encoding_part_3_of_3$acuity)
 
+# df_encoding_part_3_of_3 |> 
+#   count(acuity, arrmode_ambulance) |> 
+#   group_by(acuity) |> 
+#   mutate(p = n/sum(n)) |> 
+#   ungroup() |> 
+#   filter(arrmode_ambulance == 1)
+  
 # ________----
 
 # 7. DATA QUAL 2-------
@@ -359,18 +420,19 @@ df_encoding_part_4_of_4 <- df_encoding_part_3_of_4 |>
 # TODO CONTINGENT ON SELECTION OF DATE
 # TODO AS ABOVE - SEPTEMBER REMOVED AS UNFINISHED.
 
-df_encoding_part_4_of_4 |> 
+df_encoding_part_3_of_3 |> 
   select(c(
     ethnic_grp_sus,
     imd_quint,
-    diag01,
+    starts_with("diag01$"),
+    starts_with("complaint"),
     ec_acuity_snomed_ct,
     ec_arrival_mode_snomed_ct,
     ec_attendance_source_snomed_ct
   )) |>
   names() |>
   map(
-    ~ count(df_encoding_part_3_of_4, .data[[.x]], sort = T) |>
+    ~ count(df_encoding_part_3_of_3, .data[[.x]], sort = T) |>
       mutate(p = n / sum(n))
   ) |> 
   map(list(.%>% mutate(var = (names(.))[1]))) |> 
@@ -406,30 +468,14 @@ df_encoding_part_4_of_4 |>
 
 # 7. MODEL  -----------------------------------------------------------
 
-# df_model_specs
-
-# test_formula <- tibble(spec = list(formula(admitted ~ acuity)))
-# 
-# as.formula("ace ~ base")
-# 
-# test_formula |> unnest(spec)
-
-vec_model_spec <- df_model_specs |> 
-  filter(der_provider_code == param_provider_choice) |> 
-  pull(formula)
-
 mod <- mgcv::gam(
   formula = as.formula(vec_model_spec),
   family = "binomial",
-  # method = "REML",
-  data = df_encoding_part_4_of_4 
+  data = df_encoding_part_3_of_3 
 ) 
 
-# test_mod |> broom::tidy(parametric = T) |> 
-#   mutate(odds = exp(estimate))
-
 # mod <- mgcv::gam(
-#   formula = admitted ~ 
+#   formula = ed_discharged ~ 
 #     # # VAR OF INTEREST:
 #     year_week +    
 #     # CASE-MIX (DEMOGRAPHICS):
@@ -442,19 +488,32 @@ mod <- mgcv::gam(
 #   # method = "REML",
 #   data = df_encoding_part_4_of_4 
 # ) |> 
-#   # assign(str_c("mod_", param_provider_choice), value = _)
+#   # assign(str_c("mod_", param_provider), value = _)
 #   identity()
 
-# mod <-  get(str_c("mod_", param_provider_choice))
+# mod <-  get(str_c("mod_", param_provider))
 
-saveRDS(mod, here("data", str_c("tmp_mod_wk_", param_provider_choice,".rds")))
+mod |>
+  saveRDS(
+    here("data", str_c(
+      "tmp_mod_wk_spec_", df_provider_mod_spec |> pull(mod_spec),
+      "_", param_provider,
+      ".rds"
+    ))
+  )
 
-mod <- readRDS(here("data", str_c("tmp_mod_wk_", param_provider_choice,".rds")))
+mod <- readRDS(
+  here("data", str_c(
+    "tmp_mod_wk_spec_", df_provider_mod_spec |> pull(mod_spec),
+    "_", param_provider,
+    ".rds"
+  ))
+)
 # ________----
 
 # 8. RESULTS --------------------------------------------------------------
 
-# mod |> broom::glance()
+mod |> broom::glance()
 
 results <- mod |> 
   tidy(parametric = TRUE) |> 
@@ -488,10 +547,15 @@ results |>
 #   mutate(date = make_date(yr, name, 1)) |> 
 #   select(term, date)
 
-# week(1)
+start_date <- get_first_monday(2025)
+
 
 # (WEEK BEGINNING)
-lkp_week <- seq(ymd("2025-01-06"), ymd("2025-12-31"), by = "1 week") |> 
+lkp_week <- seq(
+  start_date,
+  as_date(Sys.time()),
+  by = "1 week"
+  ) |> 
   enframe(name = NULL, value = "date") |> 
   mutate(term = yearweek(date)) |> 
   mutate(term = str_c("year_week", term))
@@ -503,7 +567,7 @@ prep_xmr <- results |>
   select(term, estimate) |> 
   filter(str_detect(term, "year_week")) |>
   left_join(lkp_week, join_by(term)) |> 
-  add_row(estimate = 0, date = as_date("2025-01-06")) |> 
+  add_row(estimate = 0, date = start_date) |> 
   arrange(date) |> 
   ###   
   mutate(mr = abs(estimate - lag(estimate))) |> 
@@ -521,21 +585,22 @@ plot_x <- prep_xmr |>
   geom_hline(aes(yintercept = x_mean[1]), lty = "dashed")+
   geom_hline(aes(yintercept = ucl[1]), lty = "dashed")+
   geom_hline(aes(yintercept = lcl[1]), lty = "dashed")+
+  annotate("text", x = start_date , y = 1.1*max(prep_xmr$estimate), hjust = 0, label = "↑ Higher admission threshold")+
   geom_point()+
   geom_line()+
   theme_minimal()+
   scale_y_log10()+
-  theme(axis.title = element_text(size = 9))+
+  theme(axis.title = element_text(size = 7))+
   scale_x_date(date_breaks = "month", date_labels = "%b %Y")+
   labs(
     x = "\nDate",
     y = str_c(
-      "Casemix-adjusted odds of admission (",
-      param_provider_choice, ")\n(Reference category: w/c Jan 6th 2025)\n"
+      "Casemix-adjusted odds of ED discharge (",
+      param_provider, ")\n(Reference category: w/c Jan 6th 2025)\n"
     )
   )
 
-# MR CHART  
+  # MR CHART  
 plot_mr <- prep_xmr |> 
   ggplot(aes(date, mr))+
   geom_hline(aes(yintercept = mr_mean[1]), lty = "dashed")+
@@ -544,17 +609,16 @@ plot_mr <- prep_xmr |>
   geom_line()+
   theme_minimal()+
   scale_y_log10()+
-  theme(axis.title = element_text(size = 9))+
+  theme(axis.title = element_text(size = 7))+
   scale_x_date(date_breaks = "month", date_labels = "%b %Y")+
   labs(
     x = "\nDate",
     y = str_c(
-      "Casemix-adjusted odds of admission (",
-      param_provider_choice, ")\n(Reference category: w/c Jan 6th 2025)\n"
+      "Moving range (",
+      param_provider, ")\n"
     )
   )
   
-library("patchwork")
 plot_x / plot_mr
 
 
@@ -579,7 +643,7 @@ plot_x / plot_mr
 #     x = "\nDate",
 #     y = str_c(
 #     "Casemix-adjusted odds of admission (",
-#     param_provider_choice, ")\n(Reference category: May 2025)\n"
+#     param_provider, ")\n(Reference category: May 2025)\n"
 #     )
 #   )
 
