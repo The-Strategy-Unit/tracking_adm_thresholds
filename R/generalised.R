@@ -3,21 +3,21 @@
 
 source(here("R", "funs.R"))
 
-# USE R1H AS TEST CASE FOR LESS GOOD DQ
 
 # ________----
 
-param_provider <- "RXR" # EAST LANCS
-# param_provider <- "R1H" # BARTS D
-# param_provider <- "RJ7" # UH ST. GEORGE'S (C)
-# param_provider <- "RYR" # SUSSEX A 
-# param_provider <- "RC9" # BEDFORD A
+# param_provider <- "RBD" # (B)
+param_provider <- "RAX" # KINGSTON AND RICHMOND (E)
+# # param_provider <- "R1H" # BARTS (D)
+# # param_provider <- "RJ7" # UH ST. GEORGE'S (C)
+# param_provider <- "RYR" # SUSSEX (A)
+# param_provider <- "RC9" # BEDFORD (A)
+
 
 # A. SPECIFY MODEL FORMULA BASED ON DATA QUAL ---------------------------
 
-# A PROVIDER'S MIN DATA QUAL FOR ANY WEEK: 
-# df_model_specs_prep <- 
-  calc_perc_na_weekly(der_ec_diagnosis_all) |> 
+# A PROVIDER'S LOWEST DATA COMPLETENESS VALUE (FOR KEY VARIABLES) FOR A WEEK WITHIN STUDY PERIOD: 
+df_provider_dataqual <- calc_perc_na_weekly(der_ec_diagnosis_all) |> 
   left_join(calc_perc_na_weekly(ec_acuity_snomed_ct), join_by(der_provider_code)) |> 
   left_join(calc_perc_na_weekly(ec_chief_complaint_snomed_ct), join_by(der_provider_code)) |> 
   left_join(calc_perc_na_weekly(ec_arrival_mode_snomed_ct), join_by(der_provider_code)) |> 
@@ -25,47 +25,95 @@ param_provider <- "RXR" # EAST LANCS
   rename(
     p_complnt = p_chief_complaint,
     p_arrmode = p_arrival_mode,
-    p_refsorc =p_attendance_source
+    p_refsorc = p_attendance_source
   ) |> 
-  # calc_perc_na(der_ec_diagnosis_all) |> 
-  # left_join(calc_perc_na(ec_acuity_snomed_ct), join_by(der_provider_code)) |> 
-  # left_join(calc_perc_na(ec_chief_complaint_snomed_ct), join_by(der_provider_code)) |> 
-  # left_join(calc_perc_na(ec_arrival_mode_snomed_ct), join_by(der_provider_code)) |> 
-  # left_join(calc_perc_na(ec_attendance_source_snomed_ct), join_by(der_provider_code)) |> 
-  # rename(
-  #   p_complnt = p_chief_complaint,
-  #   p_arrmode = p_arrival_mode,
-  #   p_refsorc =p_attendance_source
-  #   ) |> 
-  # ASSUMING SOME CORRELATION BETWEEN ARRMODE AND ACUITY
-  mutate(mod_spec = case_when(
-    p_diag >= 0.85 & p_acuity >= 0.85 & p_arrmode >= 0.85 & p_refsorc >= 0.85 ~ "A", # FULL MODEL
-    p_diag >= 0.80 & p_arrmode >= 0.85 ~ "B", # LOWER DIAG THRESHOLD, REMOVE ACUITY AND REF SORCE
-    p_complnt >= 0.80 & p_acuity >= 0.80 ~ "C", # COMPLAINT AND ACUITY
-    p_arrmode >= 0.80 ~ "D", # ARRIVAL MODE
-    TRUE ~ "E" # AGE SEX
-  )) |> 
-  count(mod_spec) |> mutate(p = n/sum(n)) |>
-  identity()
-  
-# df_model_specs_prep |> filter(mod_spec == "D") |> print(n=50)
-df_provider_mod_spec <- df_model_specs_prep |> 
-  filter(der_provider_code == param_provider)
-  
-df_model_specs <- df_model_specs_prep |> 
-  select(der_provider_code, mod_spec) |> 
-  mutate(model_formula = case_when(
-    mod_spec == "A" ~ "ed_discharged ~ year_week + s(age, by = sex) + sex + imd_quint + ethnic_grp_sus + diag01 + arrmode_ambulance + acuity + referral_source + wkend + night_time_8to8",
-    mod_spec == "B" ~ "ed_discharged ~ year_week + s(age, by = sex) + sex + imd_quint + ethnic_grp_sus + diag01 + arrmode_ambulance + wkend + night_time_8to8",
-    mod_spec == "C" ~ "ed_discharged ~ year_week + s(age, by = sex) + sex + imd_quint + ethnic_grp_sus + complaint + acuity + wkend + night_time_8to8",
-    mod_spec == "D" ~ "ed_discharged ~ year_week + s(age, by = sex) + sex + imd_quint + ethnic_grp_sus + arrmode_ambulance + wkend + night_time_8to8",
-    mod_spec == "E" ~ "ed_discharged ~ year_week + s(age, by = sex) + sex + imd_quint + ethnic_grp_sus + wkend + night_time_8to8",
-    T ~ NA_character_
-  ))
+  # IF THERE ARE WEEKS WITH ALL NAs FOR A VARIABLE, THEN SET % TO ZERO:
+  mutate(across(starts_with("p_"), ~ if_else(is.na(.), 0, .)))
 
-vec_model_spec <- df_model_specs |> 
+df_provider_specs_assigned <- df_provider_dataqual |> 
+  # filter(der_provider_code == param_provider) |> 
+  left_join(
+    df_thresholds, 
+    join_by(
+      p_diag >= min_diag,
+      p_acuity >= min_acuity,
+      p_complnt >= min_complnt,
+      p_arrmode >= min_arrmode,
+      p_refsorc >= min_refsorc,
+      )
+    ) |> 
+  group_by(der_provider_code) |> 
+  filter(rank == min(rank)) |>
+  ungroup() |> 
+  select(-c(starts_with("min"), rank))
+
+df_provider_specs_assigned |> count(mod_spec) |> mutate(p = n/sum(n)) 
+df_provider_specs_assigned |> filter(mod_spec == "b") 
+
+
+df_chosen_provider_spec <- df_provider_specs_assigned |> 
   filter(der_provider_code == param_provider) |> 
-  pull(model_formula)
+  left_join(lkp_model_specs, join_by(mod_spec)) 
+
+# # A PROVIDER'S MIN DATA QUAL FOR ANY WEEK WITHIN STUDY PERIOD: 
+# df_model_specs_prep <- calc_perc_na_weekly(der_ec_diagnosis_all) |> 
+#   left_join(calc_perc_na_weekly(ec_acuity_snomed_ct), join_by(der_provider_code)) |> 
+#   left_join(calc_perc_na_weekly(ec_chief_complaint_snomed_ct), join_by(der_provider_code)) |> 
+#   left_join(calc_perc_na_weekly(ec_arrival_mode_snomed_ct), join_by(der_provider_code)) |> 
+#   left_join(calc_perc_na_weekly(ec_attendance_source_snomed_ct), join_by(der_provider_code)) |> 
+#   rename(
+#     p_complnt = p_chief_complaint,
+#     p_arrmode = p_arrival_mode,
+#     p_refsorc =p_attendance_source
+#   ) |> 
+#   # ASSUMING SOME CORRELATION BETWEEN ARRMODE AND ACUITY:
+#   mutate(mod_spec = case_when(
+#     p_diag >= 0.85 & p_acuity >= 0.85 & p_arrmode >= 0.85 & p_refsorc >= 0.85 ~ "A", 
+#     # (B) LOWER DIAG THRESHOLD, REMOVE ACUITY AND REFSORC CRITERIA:
+#     p_diag >= 0.80 & p_arrmode >= 0.85 ~ "B",
+#     # (C) USE COMPLAINT AND ACUITY:
+#     p_complnt >= 0.80 & p_acuity >= 0.80 ~ "C",
+#     # ARRIVAL MODE:
+#     p_arrmode >= 0.80 ~ "D",
+#     # BASE MODEL: DEMOGRAPHICS (AGE, SEX, ETH, IMD) AND TIME RELATED: 
+#     TRUE ~ "E" 
+#   )) 
+
+# TODO FLOW DIAGRAM BASED ON DQ
+
+# df_model_specs_prep |>  count(mod_spec) |> mutate(p = n/sum(n))
+# df_model_specs_prep |> filter(mod_spec == "E") |> print(n=50)
+# df_model_specs_prep |> filter(der_provider_code == "R1H") 
+
+# df_model_specification |> 
+#   mutate(
+#     model_formula = case_when(
+#       mod_spec == "a" ~ basic_e + spec_a,
+#       mod_spec == "b" ~ basic_e + spec_b,
+#       mod_spec == "c" ~ basic_e + spec_c,
+#       mod_spec == "d" ~ basic_e + spec_d,
+#       mod_spec == "e" ~ basic_e,
+#       T ~ NA_character_
+#       )
+#   )
+
+vec_model_spec <- df_chosen_provider_spec |> pull(mod_formula)
+
+
+# df_model_specs <- df_model_specs_prep |> 
+#   select(der_provider_code, mod_spec) |> 
+#   mutate(model_formula = case_when(
+#     mod_spec == "A" ~ "ed_discharged ~ year_week + s(age, by = sex) + sex + imd_quint + ethnic_grp_sus + diag01 + arrmode_ambulance + acuity + referral_source + wkend + night_time_8to8",
+#     mod_spec == "B" ~ "ed_discharged ~ year_week + s(age, by = sex) + sex + imd_quint + ethnic_grp_sus + diag01 + arrmode_ambulance + wkend + night_time_8to8",
+#     mod_spec == "C" ~ "ed_discharged ~ year_week + s(age, by = sex) + sex + imd_quint + ethnic_grp_sus + complaint + acuity + wkend + night_time_8to8",
+#     mod_spec == "D" ~ "ed_discharged ~ year_week + s(age, by = sex) + sex + imd_quint + ethnic_grp_sus + arrmode_ambulance + wkend + night_time_8to8",
+#     mod_spec == "E" ~ "ed_discharged ~ year_week + s(age, by = sex) + sex + imd_quint + ethnic_grp_sus + wkend + night_time_8to8",
+#     T ~ NA_character_
+#   ))
+
+# vec_model_spec <- df_model_specs |> 
+#   filter(der_provider_code == param_provider) |> 
+#   pull(model_formula)
 
 
 # 4. PREP 1----------------------------------------------------------------------
@@ -94,10 +142,10 @@ gc()
 # ________----
 
 
-## a. ENCODING -------------------------------------------------------------
+## a. ENCODING PARTS 1 AND 2 -----------------------------------
 
 if(
-  df_provider_mod_spec |> pull(mod_spec) %in% c("A", "B")
+  df_chosen_provider_spec$mod_spec %in% c("a", "b")
 ) {
 ### i. diagnosis -----------------------------------------------
 
@@ -159,7 +207,7 @@ df_encoding_part_1_of_3 <- df_1 |>
   mutate(diag01 = fct_relevel(diag01, "l3_lower_respiratory_tract_infection")) 
 
 } else if (
-  df_provider_mod_spec |> pull(mod_spec) == "C"
+  df_provider_mod_spec |> pull(mod_spec) == "c"
 ) { 
 ### ii. chief complaint -----------------------------------------------------------
 # options(scipen = 999)
@@ -264,8 +312,8 @@ df_encoding_part_2_of_3 <- df_encoding_part_1_of_3 |>
     is.na(ref_arrmode) ~ "0",
     TRUE ~ "0"
   )) |> 
-    # ref_arrmode == "Arrival by public transport" ~ "public_trans",
   left_join(lkp_ethref_raw, join_by(ethnic_category == code)) |>
+  mutate(ethnic_grp_sus = if_else(is.na(ethnic_grp_sus), "NA", ethnic_grp_sus)) |> 
   mutate(imd_quint = as.character(
     round_half_up(
       as.numeric(index_of_multiple_deprivation_decile) / 2
@@ -297,7 +345,7 @@ df_encoding_part_2_of_3 <- df_encoding_part_1_of_3 |>
 
 ## a. where clause exclusion details ----------------------------------
 
-# TODO RE-RUN WHERE CLAUSE SQL SCRIPT
+# RUN WHERE CLAUSE SQL SCRIPT AT SAME TIME AS MAIN QUERY UPDATED.
 readRDS(here("data", "where_exclusion_matrix.rds")) |> 
   filter(procode == param_provider) |> 
   mutate(sigma = sum(n)) |>
@@ -365,8 +413,7 @@ df_encoding_part_2_of_3 |>
 # ________----
 
 
-# 6. PREP 2 --------------------------------------------------------
-
+# 6. ENCODING PART 3 --------------------------------------------------------
 
 # TODO THEN CHOOSE:
 # BASED ON ASSESSMENT OF ABOVE DQ:
@@ -374,7 +421,6 @@ df_encoding_part_2_of_3 |>
 # AS IT HAPPENS LAST DAY OF AUG WAS SUNDAY.
 param_date_cutoff <- "2025-08-31"
 # WE MIGHT WANT A DEFAULT 
-
 
 # as_date(yearweek(param_date_cutoff)) - days(1)
 
@@ -390,6 +436,8 @@ df_encoding_part_3_of_3 <- df_encoding_part_2_of_3 |>
   #####
   ## EXCLUDING DIAG AND COMPLAINT AS REF LEVEL ALREADY SPECIFIED:
   mutate(across(c(everything(), - age, -starts_with("diag")), ~ as.factor(.))) |>
+  # SET REF LEVEL FOR OUTCOME (NECESSARY FOR CONSISTENT METRICS):
+  mutate(ed_discharged = fct_relevel(ed_discharged, "1")) |> 
   # SET REF LEVEL FOR OTHER CATS: (HIGH VOLUME, MODERATE EFFECT)
   mutate(acuity = fct_relevel(acuity, "Standard")) |> 
   mutate(ethnic_grp_sus = fct_relevel(ethnic_grp_sus, "British, Mixed British")) |> 
@@ -416,39 +464,44 @@ df_encoding_part_3_of_3 <- df_encoding_part_2_of_3 |>
 # 7. DATA QUAL 2-------
 
 ## c. regressor dq ----------------------------------------------------
+# 
+# # TODO CONTINGENT ON SELECTION OF DATE
+# # TODO AS ABOVE - SEPTEMBER REMOVED AS UNFINISHED.
+# 
+# # NOTE: THE DIFFERENCE HERE IS THAT THIS IS OVERALL COMPLETENESS
+# #       AND NOT MINIMUM COMPLETENESS IN A WEEK:
+# 
+# df_encoding_part_3_of_3 |> 
+#   select(c(
+#     ethnic_grp_sus,
+#     imd_quint,
+#     starts_with("diag01$"),
+#     starts_with("complaint"),
+#     ec_acuity_snomed_ct,
+#     ec_arrival_mode_snomed_ct,
+#     ec_attendance_source_snomed_ct
+#   )) |>
+#   names() |>
+#   map(
+#     ~ count(df_encoding_part_3_of_3, .data[[.x]], sort = T) |>
+#       mutate(p = n / sum(n))
+#   ) |> 
+#   map(list(.%>% mutate(var = (names(.))[1]))) |> 
+#   map(list(.%>% rename(level = 1))) |> 
+#   map(list(.%>% mutate(level = as.character(level)))) |> 
+#   reduce(bind_rows) |> 
+#   select(var, everything()) |> 
+#   count(var, na = is.na(level), wt = p, name = "p") |> 
+#   complete(var, na) |> 
+#   mutate(p = if_else(is.na(p), 0, p)) |> 
+#   filter(na == FALSE) |> 
+#   select(-na) |> 
+#   # rename(%_complete = p)
+#   # mutate(p = str_c(round(p *100, 2), "%")) |>
+#   rename(prop_complete = p) 
+# 
 
-# TODO CONTINGENT ON SELECTION OF DATE
-# TODO AS ABOVE - SEPTEMBER REMOVED AS UNFINISHED.
-
-df_encoding_part_3_of_3 |> 
-  select(c(
-    ethnic_grp_sus,
-    imd_quint,
-    starts_with("diag01$"),
-    starts_with("complaint"),
-    ec_acuity_snomed_ct,
-    ec_arrival_mode_snomed_ct,
-    ec_attendance_source_snomed_ct
-  )) |>
-  names() |>
-  map(
-    ~ count(df_encoding_part_3_of_3, .data[[.x]], sort = T) |>
-      mutate(p = n / sum(n))
-  ) |> 
-  map(list(.%>% mutate(var = (names(.))[1]))) |> 
-  map(list(.%>% rename(level = 1))) |> 
-  map(list(.%>% mutate(level = as.character(level)))) |> 
-  reduce(bind_rows) |> 
-  select(var, everything()) |> 
-  count(var, na = is.na(level), wt = p, name = "p") |> 
-  complete(var, na) |> 
-  mutate(p = if_else(is.na(p), 0, p)) |> 
-  filter(na == FALSE) |> 
-  select(-na) |> 
-  # rename(%_complete = p)
-  # mutate(p = str_c(round(p *100, 2), "%")) |>
-  rename(prop_complete = p) 
-
+# TODO: DIAGNOSIS / COMPLAINT DIAGNOSTICS: (?)
 
 # DIAGNOSIS CODING: DIAGNOSTICS
 # (could write tests here)
@@ -471,8 +524,9 @@ df_encoding_part_3_of_3 |>
 mod <- mgcv::gam(
   formula = as.formula(vec_model_spec),
   family = "binomial",
-  data = df_encoding_part_3_of_3 
+  data = df_encoding_part_3_of_3
 ) 
+
 
 # mod <- mgcv::gam(
 #   formula = ed_discharged ~ 
@@ -514,6 +568,67 @@ mod <- readRDS(
 # 8. RESULTS --------------------------------------------------------------
 
 mod |> broom::glance()
+
+# BRIER AND ROC C STAT.  
+
+tibble(
+  obs = df_encoding_part_3_of_3$ed_discharged,
+  
+  # predict(mod, type = "response") |>  tibble()
+  fit = fitted(mod), # predicted probabilities 1
+  
+  # res = residuals(mod)
+) |> 
+  # roc_auc(obs, fit)
+  brier_class(obs, fit)
+
+
+
+df_encoding_part_3_of_3 |> 
+  summarise(across(everything(), ~ in))
+
+tibble(
+obs = df_encoding_part_3_of_3$ed_discharged,
+
+# predict(mod, type = "response") |>  tibble()
+fit = fitted(mod), # predicted probabilities 1
+
+# res = residuals(mod)
+) |>  
+  filter(fit < 0.5)
+mod$residuals |> tibble()
+
+df_encoding_part_3_of_3 |> 
+  select(
+    ed_discharged, age, sex, imd_quint, ethnic_grp_sus,
+    year_week, wkend, night_time_8to8, 
+    ) |> 
+  mutate(across(everything(), ~is.na(.))) |> 
+  colSums()
+  
+  
+  # na.omit()
+  colSums(is.na(.))
+
+predict(mod) |>  tibble()
+mod$residuals |> tibble()
+
+
+two_class_example |> tibble()
+
+mod$
+mod$residuals |> tibble()
+
+  install.packages("yardstick")
+  library("yardstick")
+
+yardstick::roc_auc()
+
+# roc_auc(two_class_example, truth, Class1)
+two_class_example |> tibble()
+# truth | Class 1  |Class 2(1-Class1) | predicted (fit)
+# 0
+# 1
 
 results <- mod |> 
   tidy(parametric = TRUE) |> 
