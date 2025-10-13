@@ -15,8 +15,9 @@ lkp_term_to_date <- seq(
 ) |> 
   enframe(name = NULL, value = "date") |> 
   mutate(term = yearweek(date)) |> 
-  mutate(term = str_c("year_week", term))
-  # mutate(term_interaction = str_c(term:na_diag1))
+  mutate(term = str_c("year_week", term)) |> 
+  mutate(term_int_diag = str_c(term, ":na_diag1")) |> 
+  mutate(term_int_comp = str_c(term, ":na_complaint1")) 
 
 df_prep_plots <- df_coeff |> 
   mutate(prep_xmr = map(mod_coeffs, function(df){
@@ -99,48 +100,53 @@ df_plots$plot_both[[2]]
 # POSSIBLY DON'T NEED PLOTS - IF TAKEN FURTHER WILL JUST
 # HIGHLIGHT ANOMALOUS WEEKS ON XMR CHARTS
 
-# TODO THIS IS UNFINISHED - NEED TO VARY TERM MATCHING WEEK , BETWEEN DIAG AND COMPLAINT
-
-df_coeff$mod_coeffs[[4]] |> 
-  # select(term) |> 
-  # print(n=400) 
-  filter(str_detect(term, ":na")) |> 
-  select(term, estimate) |> 
-  # filter(str_detect(term, "year_week")) |>
-  # REMOVE INTERACTION TERMS, IF PRESENT:
-  # filter(!str_detect(term, "diag")) |>
-  left_join(lkp_term_to_date, join_by(term)) |> 
-  # add_row(estimate = 0, date = param_date_start) |> 
-  arrange(date) |> 
-  mutate(across(where(is.numeric), ~ exp(.)))
-# mutate(week = row_number()) |> 
-ggplot(aes(date, estimate))+
-  theme_minimal()+
-  geom_point()+
-  geom_line()+
-  geom_blank(aes(y =0))
-
-df_risk_plots <- df_coeff |> 
+df_risk_plots <- df_coeff |>
   # FOR INTERACTION MODELS:
-  filter(mod_spec %in% c("a1", "b1")) |> 
-  mutate(plot_risk = map2(mod_coeffs, der_provider_site_code, function(df, x){
-    df |> 
-      filter(str_detect(term, ":na")) |> 
-      select(term, estimate) |> 
-      # filter(str_detect(term, "year_week")) |>
-      # REMOVE INTERACTION TERMS, IF PRESENT:
-      # filter(!str_detect(term, "diag")) |>
-      left_join(lkp_term_to_date, join_by(term)) |> 
-      # add_row(estimate = 0, date = param_date_start) |> 
-      arrange(date) |> 
-      mutate(across(where(is.numeric), ~ exp(.)))
-      # mutate(week = row_number()) |> 
-      ggplot(aes(date, estimate))+
-      theme_minimal()+
-      geom_point()+
-      geom_line()+
-      geom_blank(aes(y =0))
-  }
+  filter(mod_spec %in% c("a1", "b1")) |>
+  mutate(plot_risk = pmap(
+    list(mod_coeffs, der_provider_site_code, mod_spec),
+    function(df, x, y) {
+      
+      if (str_detect(y, "a")) {
+        df |>
+          filter(str_detect(term, ":na")) |>
+          select(term, estimate) |>
+          left_join(lkp_term_to_date, join_by(term == term_int_diag)) |>
+          arrange(date) |>
+          mutate(across(where(is.numeric), ~ exp(.))) |>
+          ggplot(aes(date, estimate)) +
+          theme_minimal() +
+          geom_point() +
+          geom_line() +
+          geom_blank(aes(y = 0))
+        
+      } else if (str_detect(y, "b")) {
+        
+        df |>
+          filter(str_detect(term, ":na")) |>
+          select(term, estimate) |>
+          left_join(lkp_term_to_date, join_by(term == term_int_comp)) |>
+          arrange(date) |>
+          mutate(across(where(is.numeric), ~ exp(.))) |>
+          ggplot(aes(date, estimate)) +
+          theme_minimal() +
+          geom_point() +
+          geom_line() +
+          geom_blank(aes(y = 0))
+      }
+    }
   ))
 
-df_risk_plots$plot_risk[[2]]
+# df_risk_plots$plot_risk[[1]]
+# 
+# df_risk_plots$data[[1]] |> 
+#   count(year_week, na_diag) |> 
+#   mutate(p = n/sum(n)) |> 
+#   filter(na_diag == 1) |> 
+#   print(n=40)
+# 
+# df_risk_plots$data[[2]] |> 
+#   count(year_week, na_complaint) |> 
+#   mutate(p = n/sum(n)) |> 
+#   filter(na_complaint == 1) |> 
+#   print(n=40)
