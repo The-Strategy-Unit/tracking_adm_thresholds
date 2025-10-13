@@ -12,14 +12,10 @@ gc()
 source(here("R", "funs.R"))
 source(here("R", "model_specifications.R"))
 source(here("R", "provider_dq.R"))
-source(here("R", "03a_prvoder_dq_groups.R"))
+source(here("R", "provider_dq_groups.R"))
 
 # CUT OFF DATE IS MOST RECENT SUNDAY MINUS THREE WEEKS:
 param_date_cutoff <- set_cutoff_date(min_buffer_days = 21)
-
-df_ecds_joined |> 
-  count(site_name) |> 
-  arrange(n)
 
 
 # 1. JOIN TO REFERENCE TABLES ---------------------------------------------
@@ -287,55 +283,55 @@ gc()
 # ! ISSUE ! ------------------------
 # WITH DISCHARGE DESTINATION - SOME PROVIDERS HAVE FEW/NO ADMISSIONS 
 
-df_var_engineering_2of2$data[[39]] |> count(ed_discharged)
-df_var_engineering_2of2$data[[39]] |> count(ref_disdest, discharge_destination_snomed_ct)
-
-df_var_engineering_2of2 |> 
-  slice(c(3, 14, 20, 10, 21, 22)) |>
-  mutate(site_name = map_chr(data, \(df) df |> distinct(site_name) |> pull() |> as.character())) |> 
-  distinct(der_provider_site_code, site_name)
-  
-  
-df_var_engineering_2of2 |> 
-  # slice(-c(3, 14, 20, 22)) |>
-  mutate(p = map_dbl(data, function(df) {
-    df |> 
-      count(ed_discharged) |>
-      mutate(p = n/sum(n)) |> 
-      filter(ed_discharged == 1) |> 
-      pull(p)-1 
-  }
-  )) |> 
-  mutate(p_adm = abs(p)) |> 
-  mutate(site_name = map_chr(data, \(df) df |> distinct(site_name) |> pull() |> as.character())) |> 
-  distinct(der_provider_site_code, site_name, p_adm) |> 
-  arrange(p_adm) |> 
-  print(n= 110)
-
-# TODO PROBLEM SITES WITH LOW % ADMISSIONS
-#    der_provider_site_code site_name                                                p_adm
-#    <chr>                  <chr>                                                    <dbl>
-#  1 RA201                  Royal Surrey County Hospital                          0.000720
-#  2 RQWG0                  The Princess Alexandra Hospital                       0.0182  
-#  3 RQ311                  Birmingham Childrens Hospital - Accident & Emergency  0.0463  
-#  4 RN707                  Darent Valley Hospital                                0.0868  
-#  5 RJ611                  Croydon University Hospital                           0.0925  
-#  6 RBS25                  Royal Liverpool Childrens Hospital                   0.0970  
-#  7 RQXM1                  Homerton University Hospital                          0.0995  
-#  8 RR801                  Leeds General Infirmary                               0.115   
-#  9 RKB01                  University Hospital Coventry                          0.119   
-# 10 RJN71                  Macclesfield District General Hospital                0.132   
-# 11 RQM01                  Chelsea and Westminster Hospital                      0.139   
-# 12 RQM91                  West Middlesex University Hospital                    0.143   
-
-
-
-df_var_engineering_2of2 |> 
-  filter(der_provider_site_code == "RA201") |>
-  unnest(data) |> 
-  # colnames()
-  count(ref_disdest, ec_discharge_status_snomed_ct, sort = T) |> 
-  print(n=40)
+# df_var_engineering_2of2$data[[39]] |> count(ed_discharged)
+# df_var_engineering_2of2$data[[39]] |> count(ref_disdest, discharge_destination_snomed_ct)
+# 
+# df_var_engineering_2of2 |> 
+#   slice(c(3, 14, 20, 10, 21, 22)) |>
+#   mutate(site_name = map_chr(data, \(df) df |> distinct(site_name) |> pull() |> as.character())) |> 
+#   distinct(der_provider_site_code, site_name)
+#   
+#   
+# df_var_engineering_2of2 |> 
+#   # slice(-c(3, 14, 20, 22)) |>
+#   mutate(p = map_dbl(data, function(df) {
+#     df |> 
+#       count(ed_discharged) |>
+#       mutate(p = n/sum(n)) |> 
+#       filter(ed_discharged == 1) |> 
+#       pull(p)-1 
+#   }
+#   )) |> 
+#   mutate(p_adm = abs(p)) |> 
+#   mutate(site_name = map_chr(data, \(df) df |> distinct(site_name) |> pull() |> as.character())) |> 
+#   distinct(der_provider_site_code, site_name, p_adm) |> 
+#   arrange(p_adm) |> 
+#   print(n= 110)
+# 
+# # TODO PROBLEM SITES WITH LOW % ADMISSIONS
+# #    der_provider_site_code site_name                                                p_adm
+# #    <chr>                  <chr>                                                    <dbl>
+# #  1 RA201                  Royal Surrey County Hospital                          0.000720
+# #  2 RQWG0                  The Princess Alexandra Hospital                       0.0182  
+# #  3 RQ311                  Birmingham Childrens Hospital - Accident & Emergency  0.0463  
+# #  4 RN707                  Darent Valley Hospital                                0.0868  
+# #  5 RJ611                  Croydon University Hospital                           0.0925  
+# #  6 RBS25                  Royal Liverpool Childrens Hospital                   0.0970  
+# #  7 RQXM1                  Homerton University Hospital                          0.0995  
+# #  8 RR801                  Leeds General Infirmary                               0.115   
+# #  9 RKB01                  University Hospital Coventry                          0.119   
+# # 10 RJN71                  Macclesfield District General Hospital                0.132   
+# # 11 RQM01                  Chelsea and Westminster Hospital                      0.139   
+# # 12 RQM91                  West Middlesex University Hospital                    0.143   
+# 
+# 
+# 
+# df_var_engineering_2of2 |> 
+#   filter(der_provider_site_code == "RA201") |>
+#   unnest(data) |> 
+#   # colnames()
+#   count(ref_disdest, ec_discharge_status_snomed_ct, sort = T) |> 
+#   print(n=40)
 
 
 # end issue-------------------------------------------------------------------------
