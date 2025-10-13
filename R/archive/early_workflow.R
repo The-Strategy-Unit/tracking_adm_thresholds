@@ -18,9 +18,13 @@ library("janitor")
 library("stringr")
 library("tsibble")
 library("lubridate")
-# library("rstudioapi")
+library("patchwork")
+library("yardstick")
 
 options(scipen=999) 
+
+server <- "udalsyndataprod.sql.azuresynapse.net"
+db <- "UDAL_Warehouse"
 
 # server <- ""
 # db <- ""
@@ -51,7 +55,8 @@ gc()
 gc()
 gc()
 
-# df_ecds_raw |> count()
+# TODO FIND PROVIDER LOOKUP !!!
+df_ecds_raw |> count(der_record_type, der_financial_year)
 # df_ecds_raw |> slice_sample(n = 50) |> view("ex_main")
 
 
@@ -123,6 +128,7 @@ gc()
 gc()
 gc()
 
+
 df_ref <- df_reference_raw |>
   mutate(sheet_name = str_to_lower(sheet_name)) |>
   # DESIRED FIELDS ONLY:
@@ -145,6 +151,9 @@ df_ref <- df_reference_raw |>
 df_ref_trimmed <- df_ref |> 
   select(snomed_code, derived_snomed_descr)
 
+df_ref_trimmed |> 
+  filter(snomed_code == "305398007")
+
 
 df_ref_diagnosis <- df_reference_raw |>
   mutate(sheet_name = str_to_lower(sheet_name)) |>
@@ -161,6 +170,17 @@ df_ref_diagnosis <- df_reference_raw |>
 
 
 # 3. GET OTHER REFERENCE TABLES -------------------------------------------
+
+# READ AND RUN QUERY FROM SCRIPT IN THE SQL FOLDER:
+sql_script_type1s <- here("sql", "[UDAL]query_dept_t1_ref.sql")
+
+query_type1s <- readChar(sql_script_type1s, file.info(sql_script_type1s)$size) |>
+  str_replace_all(string = _, "\n|\r|ï»¿", " ")
+
+lkp_type1s_raw <- dbGetQuery(con_test, query_type1s) |>
+  as_tibble() |>
+  clean_names() 
+  
 
 # READ AND RUN QUERY FROM SCRIPT IN THE SQL FOLDER:
 sql_script_ethref <- here("sql", "[UDAL]query_eth_ref.sql")

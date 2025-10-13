@@ -2,36 +2,24 @@
 # Run early workflow 1-3 and then:
 
 source(here("R", "funs.R"))
+source(here("R", "model_specifications.R"))
+# source(here("R", "dq_thresholds.R"))
+source(here("R", "provider_dq.R"))
 
 
 # ________----
 
 # param_provider <- "RBD" # (B)
-param_provider <- "RAX" # KINGSTON AND RICHMOND (E)
+# param_provider <- "RAX" # KINGSTON AND RICHMOND (E)
+param_provider <- "RWE" # LEICS - NUMBERS ISSUE
+param_provider <- "RMC" # BOLTON (D) ARG WORST DQ
 # # param_provider <- "R1H" # BARTS (D)
-# # param_provider <- "RJ7" # UH ST. GEORGE'S (C)
+param_provider <- "RJ7" # UH ST. GEORGE'S (C)
 # param_provider <- "RYR" # SUSSEX (A)
 # param_provider <- "RC9" # BEDFORD (A)
 
 
-# A. SPECIFY MODEL FORMULA BASED ON DATA QUAL ---------------------------
-
-# A PROVIDER'S LOWEST DATA COMPLETENESS VALUE (FOR KEY VARIABLES) FOR A WEEK WITHIN STUDY PERIOD: 
-df_provider_dataqual <- calc_perc_na_weekly(der_ec_diagnosis_all) |> 
-  left_join(calc_perc_na_weekly(ec_acuity_snomed_ct), join_by(der_provider_code)) |> 
-  left_join(calc_perc_na_weekly(ec_chief_complaint_snomed_ct), join_by(der_provider_code)) |> 
-  left_join(calc_perc_na_weekly(ec_arrival_mode_snomed_ct), join_by(der_provider_code)) |> 
-  left_join(calc_perc_na_weekly(ec_attendance_source_snomed_ct), join_by(der_provider_code)) |> 
-  rename(
-    p_complnt = p_chief_complaint,
-    p_arrmode = p_arrival_mode,
-    p_refsorc = p_attendance_source
-  ) |> 
-  # IF THERE ARE WEEKS WITH ALL NAs FOR A VARIABLE, THEN SET % TO ZERO:
-  mutate(across(starts_with("p_"), ~ if_else(is.na(.), 0, .)))
-
-df_provider_specs_assigned <- df_provider_dataqual |> 
-  # filter(der_provider_code == param_provider) |> 
+df_model_specs_assigned <- df_provider_dataqual |> 
   left_join(
     df_thresholds, 
     join_by(
@@ -47,13 +35,23 @@ df_provider_specs_assigned <- df_provider_dataqual |>
   ungroup() |> 
   select(-c(starts_with("min"), rank))
 
-df_provider_specs_assigned |> count(mod_spec) |> mutate(p = n/sum(n)) 
-df_provider_specs_assigned |> filter(mod_spec == "b") 
+# df_model_specs_assigned |> count(mod_spec) |> mutate(p = n/sum(n)) 
 
+df_model_specs_assigned |> 
+  filter(mod_spec == "d") |> 
+  # arrange(-p_diag)
+  mutate(a = pmax(p_diag, p_complnt)) |> 
+    arrange(-a) |> 
+  print(n=60)
+  
+df_model_specs_assigned |> 
+  filter(mod_spec == "e") 
 
-df_chosen_provider_spec <- df_provider_specs_assigned |> 
+df_chosen_provider_spec <- df_model_specs_assigned |> 
   filter(der_provider_code == param_provider) |> 
   left_join(lkp_model_specs, join_by(mod_spec)) 
+
+
 
 # # A PROVIDER'S MIN DATA QUAL FOR ANY WEEK WITHIN STUDY PERIOD: 
 # df_model_specs_prep <- calc_perc_na_weekly(der_ec_diagnosis_all) |> 
@@ -97,7 +95,7 @@ df_chosen_provider_spec <- df_provider_specs_assigned |>
 #       )
 #   )
 
-vec_model_spec <- df_chosen_provider_spec |> pull(mod_formula)
+# vec_model_spec <- df_chosen_provider_spec |> pull(mod_formula)
 
 
 # df_model_specs <- df_model_specs_prep |> 
@@ -138,6 +136,13 @@ df_1 <- df_ecds_raw |>
 
 gc()
 gc()
+
+df_1 |> 
+  count(ec_chief_complaint_snomed_ct, sort = T) |> 
+  left_join(df_ref, join_by(ec_chief_complaint_snomed_ct == snomed_code)) |> 
+  select(-n, everything(), n, -c(ecds_group3, ecds_group2)) |> 
+  mutate(p = n/sum(n)) |> 
+  mutate(cs = cumsum(p)) 
 
 # ________----
 
@@ -207,7 +212,7 @@ df_encoding_part_1_of_3 <- df_1 |>
   mutate(diag01 = fct_relevel(diag01, "l3_lower_respiratory_tract_infection")) 
 
 } else if (
-  df_provider_mod_spec |> pull(mod_spec) == "c"
+  df_chosen_provider_spec$mod_spec == "c"
 ) { 
 ### ii. chief complaint -----------------------------------------------------------
 # options(scipen = 999)
@@ -264,13 +269,19 @@ lkp_complaint <- bind_rows(
 ) 
 
 df_encoding_part_1_of_3 <- df_1 |>
-  left_join(lkp_complaint, join_by(ec_chief_complaint_snomed_ct))
+  left_join(lkp_complaint, join_by(ec_chief_complaint_snomed_ct)) |> 
+  # SET REF CATEGORY FOR COMPLAINT: (HIGH VOLUME, MODERATE EFFECT)
+  mutate(diag01 = fct_relevel(complaint, "Chest pain")) 
+
 
 } else {
   
   df_encoding_part_1_of_3 <- df_1
   
 } 
+
+gc()
+gc()
 
 ### iii. other variables -----------------------------------------------------------
 
@@ -345,22 +356,43 @@ df_encoding_part_2_of_3 <- df_encoding_part_1_of_3 |>
 
 ## a. where clause exclusion details ----------------------------------
 
+param_provider_site <- "RXK02"
+param_provider_site <- "RBL20"
+
+# CHECK FOR LOW ATTENDANCES - POSSIBLE DEAD CODE ERROR
+param_provider_site <- "RWEAA"# LEICS
+param_provider_site <- "RAL27"# MIDLESX
+param_provider_site <- "RA7C2" # 
+param_provider_site <- "N6J7V" # PRINCESS ROYAL
+param_provider_site <- "R0A03" # 
+param_provider_site <- "RF4DG" # 
+
+# ALL DISCHARGED HOME:
+
+param_provider_site <- "RBS25" # ALDERHEY - LOTS SUS EXCLUSIONS BASED ON STREAMING
+param_provider_site <- "RF4DG" # KING GEORGE
+
 # RUN WHERE CLAUSE SQL SCRIPT AT SAME TIME AS MAIN QUERY UPDATED.
-readRDS(here("data", "where_exclusion_matrix.rds")) |> 
-  filter(procode == param_provider) |> 
+# readRDS(here("data", "where_exclusion_matrix.rds")) |> 
+# readRDS(here("data", "where_exclusions.rds")) |> 
+# readRDS(here("data", "where.rds")) |> 
+readRDS(here("data", "where_matrix.rds")) |> 
+  filter(der_provider_site_code == param_provider_site) |> 
   mutate(sigma = sum(n)) |>
   rowwise() |> 
-  mutate(row_sum = sum(c_across(c(everything(), -c(procode, n, p, sigma))))) |> 
+  mutate(row_sum = sum(c_across(c(everything(), -c(der_provider_code,der_provider_site_code, n, p, sigma))))) |> 
   ungroup() |> 
   # REMOVE THE ROW CORRESPONDING TO ATTENDANCES FOLLOWING ALL EXCLUSIONS:
   filter(row_sum != 0) |> 
   mutate(n_after_excl = sigma - cumsum(n)) |> 
+  # view()
   mutate(n_before_excl = n_after_excl + n) |> 
   select(-c(sigma, p)) |> 
   rename(n_excl = n) |> 
   relocate(c(n_before_excl, n_excl, n_after_excl), .after = row_sum) |> 
   # print(n=40)
   view("where")
+
 
 
 ## b. date-related ---------------------------------------------------------
@@ -428,29 +460,30 @@ param_date_cutoff <- "2025-08-31"
 # (REQUIRED BEFORE MOVING TO FURTHER DQ CHECKS)
 
 df_encoding_part_3_of_3 <- df_encoding_part_2_of_3 |> 
-  ##### DATE RELATED SELECTIONS:
-  filter(year_week <= yearweek(param_date_cutoff)) |> 
-  # WE START FROM FIRST MONDAY OF THE YEAR.
-  # THE 7TH JAN WILL ALWAYS BE IN THE WEEK WE WANT TO START WITH.
-  filter(year_week >= yearweek("2025-01-07")) |> 
-  #####
-  ## EXCLUDING DIAG AND COMPLAINT AS REF LEVEL ALREADY SPECIFIED:
-  mutate(across(c(everything(), - age, -starts_with("diag")), ~ as.factor(.))) |>
-  # SET REF LEVEL FOR OUTCOME (NECESSARY FOR CONSISTENT METRICS):
-  mutate(ed_discharged = fct_relevel(ed_discharged, "1")) |> 
-  # SET REF LEVEL FOR OTHER CATS: (HIGH VOLUME, MODERATE EFFECT)
-  mutate(acuity = fct_relevel(acuity, "Standard")) |> 
-  mutate(ethnic_grp_sus = fct_relevel(ethnic_grp_sus, "British, Mixed British")) |> 
-  mutate(referral_source = fct_relevel(referral_source, "self")) |> 
-  # SET REF CATEGORY FOR YEAR_MONTH (SECOND WEEK OF CALENDAR YEAR):
-  mutate(year_week = fct_relevel(year_week, as.character(yearweek("2025-01-08")))) |>
-  identity()
+    ##### DATE RELATED SELECTIONS:
+    filter(year_week <= yearweek(param_date_cutoff)) |> 
+    # WE START FROM FIRST MONDAY OF THE YEAR.
+    # THE 7TH JAN WILL ALWAYS BE IN THE WEEK WE WANT TO START WITH.
+    filter(year_week >= yearweek("2025-01-07")) |> 
+    #####
+    ## EXCLUDING DIAG AND COMPLAINT AS REF LEVEL ALREADY SPECIFIED:
+    mutate(across(c(everything(), - age, -starts_with("diag")), ~ as.factor(.))) |>
+    # EXPLICITLY SET REF LEVEL FOR OUTCOME (NECESSARY FOR CONSISTENT METRICS):
+    mutate(ed_discharged = fct_relevel(ed_discharged, "0")) |> 
+    # SET REF LEVEL FOR OTHER CATS: (HIGH VOLUME, MODERATE EFFECT)
+    mutate(acuity = fct_relevel(acuity, "Standard")) |> 
+    mutate(ethnic_grp_sus = fct_relevel(ethnic_grp_sus, "British, Mixed British")) |> 
+    mutate(referral_source = fct_relevel(referral_source, "self")) |> 
+    # SET REF CATEGORY FOR YEAR_MONTH (SECOND WEEK OF CALENDAR YEAR):
+    mutate(year_week = fct_relevel(year_week, as.character(yearweek("2025-01-08")))) |>
+    identity()
 
 
 # df_encoding_part_3_of_3 |> glimpse()
 # # levels(df_encoding_part_4_of_4$year_week)
 # # levels(df_model_prep$diag01)
 # levels(df_encoding_part_3_of_3$acuity)
+levels(df_encoding_part_3_of_3$ed_discharged)
 
 # df_encoding_part_3_of_3 |> 
 #   count(acuity, arrmode_ambulance) |> 
@@ -506,27 +539,38 @@ df_encoding_part_3_of_3 <- df_encoding_part_2_of_3 |>
 # DIAGNOSIS CODING: DIAGNOSTICS
 # (could write tests here)
 
-# tmp_diag_prep_l3 |> filter(diag_descr_snomed == "No abnormality detected") |> select(diag_descr_snomed, p)
-# tmp_diag_prep_l3 |> filter(is.na(diag_descr_snomed))
+tmp_diag_prep_l3 |> filter(diag_descr_snomed == "No abnormality detected") |> select(diag_descr_snomed, p)
+tmp_diag_prep_l3 |> filter(is.na(diag_descr_snomed))
 
 # tmp_diag_l3 |> summarise(perc_coverage_l3 = max(cs))
 # tmp_diag_l2 |> summarise(perc_coverage_l2 = sum(p))
 # tmp_diag_l1 |> summarise(perc_coverage_l1 = sum(p))
 
-# lkp_diag |> count(str_sub(diag01, 1, 2), diag01) |> nrow() == 52
+lkp_diag |> count(str_sub(diag01, 1, 2), diag01) |> nrow() == 52
 
+lkp_diag
 
+df_encoding_part_3_of_3 |> count(diag01, sort = T)
+
+tmp_diag_l3
 
 # ________----
 
 # 7. MODEL  -----------------------------------------------------------
 
 mod <- mgcv::gam(
-  formula = as.formula(vec_model_spec),
+  formula = as.formula(df_chosen_provider_spec$mod_formula),
   family = "binomial",
   data = df_encoding_part_3_of_3
 ) 
 
+# TODO WE'D HAVE TO ADDRESS SOME NAs THIS WAY
+# TODO WE'D HAVE TO ADDRESS SOME NAs THIS WAY
+# TODO WE'D HAVE TO ADDRESS SOME NAs THIS WAY
+# TODO WE'D HAVE TO ADDRESS SOME NAs THIS WAY
+# TODO WE'D HAVE TO ADDRESS SOME NAs THIS WAY
+mod$fitted.values |> length()
+df_1
 
 # mod <- mgcv::gam(
 #   formula = ed_discharged ~ 
@@ -550,7 +594,7 @@ mod <- mgcv::gam(
 mod |>
   saveRDS(
     here("data", str_c(
-      "tmp_mod_wk_spec_", df_provider_mod_spec |> pull(mod_spec),
+      "tmp_mod_wk_spec_", df_chosen_provider_spec |> pull(mod_spec),
       "_", param_provider,
       ".rds"
     ))
@@ -569,7 +613,16 @@ mod <- readRDS(
 
 mod |> broom::glance()
 
+
+tibble(
+  obs = df_encoding_part_3_of_3$ed_discharged,
+
+fit = fitted(mod), # predicted probabilities 1
+predict(mod, type = "response" )
+) |> 
+  print(n=40)
 # BRIER AND ROC C STAT.  
+
 
 tibble(
   obs = df_encoding_part_3_of_3$ed_discharged,
@@ -579,10 +632,39 @@ tibble(
   
   # res = residuals(mod)
 ) |> 
-  # roc_auc(obs, fit)
+  sample_n(1000) |> 
+  ggplot(aes(obs, fit))+
+  ggbeeswarm::geom_quasirandom(alpha = 0.1)+
+  geom_boxplot(alpha = .2)
+
+df_encoding_part_3_of_3 |> count(der_provider_code)
+
+levels(df_encoding_part_3_of_3$ed_discharged)
+
+tibble(
+  obs = df_encoding_part_3_of_3$ed_discharged,
+  
+  # predict(mod, type = "response") |>  tibble()
+  fit = fitted(mod), # predicted probabilities 1
+  
+  # res = residuals(mod)
+) |> 
+  # roc_auc(obs, fit, event_level = "second")
+  brier_class(truth = obs, fit)
+
+
+  roc_auc(
+    tibble(
+      obs = df_encoding_part_3_of_3$ed_discharged |>  length(),
+      
+      # predict(mod, type = "response") |>  tibble()
+      fit = fitted(mod) |> length(), # predicted probabilities 1
+      
+      # res = residuals(mod)
+    ),
+    
+    obs, fit)
   brier_class(obs, fit)
-
-
 
 df_encoding_part_3_of_3 |> 
   summarise(across(everything(), ~ in))
@@ -598,10 +680,17 @@ fit = fitted(mod), # predicted probabilities 1
   filter(fit < 0.5)
 mod$residuals |> tibble()
 
+
+df_1 |> vctrs::vec_size()
+df_encoding_part_2_of_3 |> vctrs::vec_size()
+df_encoding_part_3_of_3 |> vctrs::vec_size()
+
 df_encoding_part_3_of_3 |> 
   select(
     ed_discharged, age, sex, imd_quint, ethnic_grp_sus,
     year_week, wkend, night_time_8to8, 
+    diag01, arrmode_ambulance, acuity, referral_source
+    
     ) |> 
   mutate(across(everything(), ~is.na(.))) |> 
   colSums()
@@ -614,7 +703,11 @@ predict(mod) |>  tibble()
 mod$residuals |> tibble()
 
 
-two_class_example |> tibble()
+two_class_example |> tibble() 
+  roc_auc(two_class_example, truth, Class1)
+  brier_class(two_class_example, truth, Class1)
+  # roc_auc(two_class_example, obs, prob class 1)
+
 
 mod$
 mod$residuals |> tibble()
