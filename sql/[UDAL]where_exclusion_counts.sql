@@ -1,3 +1,10 @@
+/*
+README
+Returns a table showing number of attendances due to
+the exclusions applied in the primary ecds query.
+Note: has no date cut-off. 
+*/
+
 SELECT
   [Der_Provider_Code],
   [Der_Provider_Site_Code],
