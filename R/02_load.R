@@ -6,7 +6,7 @@
 # 1. ECDS -------------------------------------------------------------
 
 # READ AND RUN QUERY FROM SCRIPT IN THE SQL FOLDER:
-sql_script_ecds <- here("sql", "[UDAL]update.sql")
+sql_script_ecds <- here("sql", "[UDAL]query_faster_ecds.sql")
 
 query_ecds <- readChar(sql_script_ecds, file.info(sql_script_ecds)$size) |>
   str_replace_all(string = _, "\n|\r|ï»¿", " ")
