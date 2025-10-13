@@ -33,7 +33,9 @@ SELECT
       ,[CDS_Activity_Date]
       ,[CDS_Interchange_Sender_Identity]
       ,[CDS_Prime_Recipient_Identity]
+      */
       ,[Provider_Code]
+      /*
       ,[Commissioner_Code]
       ,[Query_Identifier]
       ,[Query_Date]
@@ -55,9 +57,9 @@ SELECT
       ,[Org_Code_Local_Patient_ID]
       ,[Withheld_Identity_Reason]
       */
+       /*
       ,[Month_of_Birth]
       ,[Year_of_Birth]
-       /*
       ,[Patient_Type]
       ,[Age_at_CDS_Activity_Date]
       ,[Age_At_Arrival]
@@ -68,9 +70,9 @@ SELECT
       ,[2011_Output_Area]
       ,[2011_MS0A]
       ,[2011_LSOA]
-       */
       ,[Country]
       ,[Government_Office_Region]
+       */
          /*
       ,[Residence_County]
       ,[Local_Authority_District]
@@ -91,11 +93,11 @@ SELECT
        */
       ,[Sex]
       ,[Ethnic_Category]
-      ,[Accommodation_Status_SNOMED_CT]
          /*
+      ,[Accommodation_Status_SNOMED_CT]
       ,[Accommodation_Status_Code_Approved]
-       */
       ,[Preferred_Spoken_Language_SNOMED_CT]
+       */
          /*
       ,[Preferred_Spoken_Language_Code_Approved]
       ,[Accessible_Information_Professional_Required_SNOMED_CT]
@@ -121,8 +123,8 @@ SELECT
       ,[Attendance_LSOA_Provider_Distance]
       ,[Attendance_LSOA_Provider_Distance_Origin]
       */
-      ,[Attendance_LSOA_Treatment_Site_Distance]
       /*
+      ,[Attendance_LSOA_Treatment_Site_Distance]
       ,[Attendance_LSOA_Treatment_Site_Distance_Origin]
       ,[EC_Attendance_Number]
       ,[Arrival_Date]
@@ -224,15 +226,15 @@ SELECT
        */
       ,[Der_Pseudo_NHS_Number]
       ,[Der_Provider_Code]
-         /*
       ,[Der_Provider_Site_Code]
+         /*
       ,[Der_Commissioner_Code]*/
       ,[Der_Age_At_CDS_Activity_Date]
       /*, [Der_Activity_Month]*/
       ,[Der_Financial_Year]
       /* ,[Der_Number_AEA_Diagnosis]
-      */
       ,[Der_Number_EC_Diagnosis]
+      */
       /*
       ,[Der_Number_AEA_Investigation]
       ,[Der_Number_EC_Investigation]
@@ -248,9 +250,9 @@ SELECT
       ,[Der_EC_Treatment_All]*/
       ,[Der_EC_Arrival_Date_Time]
       ,[Der_EC_Departure_Date_Time]
+         /*
       ,[Der_EC_Duration]
       ,[Der_Postcode_CCG_Code]
-         /*
       ,[Der_Postcode_PCT_Code]
       ,[Der_Postcode_Sector]
       ,[Der_Postcode_Local_Auth]
@@ -262,7 +264,9 @@ SELECT
       ,[Der_Postcode_MSOA_Code]
       ,[Der_Postcode_Constituency_Code]
       ,[Der_Dupe_Flag]
+      */
       ,[Der_Record_Type]
+      /*
       ,[Der_Pseudo_Patient_Pathway_ID]
       ,[Der_AEA_Patient_Group]
       */
@@ -274,8 +278,8 @@ SELECT
          /*
       ,[Der_Postcode_MSOA_2021_Code]
       ,[Clinically_Ready_To_Proceed_Timestamp]
-      */
       ,[Clinically_Ready_To_Proceed_Time_Since_Arrival]
+      */
       /*
       ,[Ambulance_Care_Contact_Identifier]
       ,[Clinical_Disease_Notification_Code]
@@ -304,10 +308,17 @@ SELECT
     AND [Sex] IN ('1', '2')
     AND [Der_Age_At_CDS_Activity_Date] BETWEEN 0 AND 110
     
-    /* NOT (BROUGHT IN DEAD OR DIED DURING ATTENDANCE):*/
+    /* NOT (BROUGHT IN DEAD OR DIED DURING ATTENDANCE): */
     AND (
+      (NOT [Der_AEA_Patient_Group] = '70') OR [Der_AEA_Patient_Group] IS NULL
+      )
+    AND (
+      (NOT [Discharge_Destination_SNOMED_CT] = '305398007') OR [Discharge_Destination_SNOMED_CT] IS NULL
+      )
+    /*AND (
       NOT ([Der_AEA_Patient_Group] = '70' OR [Discharge_Destination_SNOMED_CT] = '305398007') 
       )
-      
+    */
+    
     /*TREATMENT COMPLETED (CHECK WHETHER TO ALSO INCLUDE NULLs):*/
     AND [EC_Discharge_Status_SNOMED_CT] = '182992009'
