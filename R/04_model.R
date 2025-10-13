@@ -6,31 +6,6 @@ gc()
 gc()
 gc()
 
-df_ecds_raw |> 
-  # filter(der_provider_site_code == "RQWG0") |> 
-  filter(der_provider_site_code == "RWA01") |> 
-  distinct(site_name)
-
-vec_providers_good_diag
-vec_providers_bad_diag
-vec_providers_complaint_candidates
-
-test_a <- df_var_engineering_2of2 |> 
-  filter(der_provider_site_code %in% c(
-    "RWA01" # Hull Royal Infirmary
-  )) |> 
-  mutate(data = map(data, \(df) df |> rename_with( ~ "na_diag", starts_with("diag_na")))) 
-  
-
-test_b <- df_var_engineering_2of2 |> 
-  filter(der_provider_site_code %in% c(
-    "RQWG0"  # The Princess Alexandra Hospital
-  )) |> 
-  mutate(data = map(data, \(df) df |> rename_with( ~ "na_complaint", starts_with("complaint_na")))) 
-test$data[[1]] |> colnames()
-
-test <- bind_rows(test_a, test_b)
-
 # -------------------------------------------------------------------------
 
 plan(multisession, workers = 4)
@@ -38,7 +13,7 @@ future::futureSessionInfo()
 
 # TODO IS FUTURE MAP2 VIABLE (TOO SLOW VS FUTURE MAP?)
 tictoc::tic()
-df_models <- test |> 
+df_models <- df_var_engineering_2of2 |> 
   ### OPTION FOR DEMO:
   ### TAKE ONE FROM BETTER GROUP, ONE FROM WORSE:
   # slice(c(1:2, 357:358)) |> 
@@ -63,13 +38,7 @@ gc()
 gc()
 gc()
 
-# LAST TEST: 372.25 secs for 4 models, 4 workers 
-
-# 116 secs for 4 models, 4 workers 
-# 430 secs for 4 models, 4 workers (day 2)
-# 294 secs for 8 models, 4 workers
-# 230 secs for 8 models, 8 workers
-df_models
+# APPROX 375.25 secs for 4 models, 4 workers 
 
 # 7. METRICS AND RELATIONSHIP TO DQ --------------------------------
 
