@@ -28,6 +28,7 @@ df_where_exclusions <- df_where_exclusions_raw |>
 
 # df_where_exclusions |> saveRDS(here("data", "where_matrix.rds"))
 
+param_provider_site <- "RWA01"
 
 readRDS(here("data", "where_matrix.rds")) |> 
   filter(der_provider_site_code == param_provider_site) |> 
