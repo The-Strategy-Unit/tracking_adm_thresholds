@@ -19,6 +19,8 @@ lkp_term_to_date <- seq(
   mutate(term_int_diag = str_c(term, ":na_diag1")) |> 
   mutate(term_int_comp = str_c(term, ":na_complaint1")) 
 
+# -------------------------------------------------------------------------
+
 df_prep_plots <- df_coeff |> 
   mutate(prep_xmr = map(mod_coeffs, function(df){
     df |> 
@@ -103,41 +105,58 @@ df_plots$plot_both[[2]]
 df_risk_plots <- df_coeff |>
   # FOR INTERACTION MODELS:
   filter(mod_spec %in% c("a1", "b1")) |>
-  mutate(plot_risk = pmap(
+  relocate(ed_name, .after = der_provider_site_code) |> 
+  arrange(dq) |> 
+  mutate(row_no = row_number()) |> 
+  mutate(data_risk = pmap(
     list(mod_coeffs, der_provider_site_code, mod_spec),
     function(df, x, y) {
       
       if (str_detect(y, "a")) {
         df |>
           filter(str_detect(term, ":na")) |>
-          select(term, estimate) |>
+          # select(term, estimate) |>
           left_join(lkp_term_to_date, join_by(term == term_int_diag)) |>
-          arrange(date) |>
-          mutate(across(where(is.numeric), ~ exp(.))) |>
-          ggplot(aes(date, estimate)) +
-          theme_minimal() +
-          geom_point() +
-          geom_line() +
-          geom_blank(aes(y = 0))
+          arrange(date) 
+          # mutate(across(where(is.numeric), ~ exp(.)))
+        
         
       } else if (str_detect(y, "b")) {
         
         df |>
           filter(str_detect(term, ":na")) |>
-          select(term, estimate) |>
+          # select(term, estimate) |>
           left_join(lkp_term_to_date, join_by(term == term_int_comp)) |>
-          arrange(date) |>
-          mutate(across(where(is.numeric), ~ exp(.))) |>
-          ggplot(aes(date, estimate)) +
-          theme_minimal() +
-          geom_point() +
-          geom_line() +
-          geom_blank(aes(y = 0))
+          arrange(date) 
+          # mutate(across(where(is.numeric), ~ exp(.)))
+          # ggplot(aes(date, estimate)) +
+          # theme_minimal() +
+          # geom_point() +
+          # geom_line() +
+          # geom_blank(aes(y = 0))
       }
     }
+  )) |> 
+
+  mutate(plot_risk = pmap(
+    list(data_risk, ed_name, row_no),
+    function(df, x, y){
+    df |> 
+      ggplot(aes(date, odds)) +
+      theme_minimal() +
+      geom_point() +
+      geom_line() +
+      geom_hline(yintercept = 0.5, lty = "dashed")+
+      geom_hline(yintercept = 2, lty = "dashed")+
+      geom_blank(aes(y = 0))+
+      labs(title = str_c(y, ". ", x))
+      
+  }
   ))
 
-# df_risk_plots$plot_risk[[1]]
+
+
+
 # 
 # df_risk_plots$data[[1]] |> 
 #   count(year_week, na_diag) |> 
