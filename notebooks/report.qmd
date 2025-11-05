@@ -1,5 +1,5 @@
 ---
-title: "Tracking Thresholds for Hospital Admission<br>Via Emergency Departments"
+title: "Tracking Thresholds for<br>Hospital Admission Via Emergency Department"
 subtitle: "A Provider-level analysis<br><br><br>DRAFT REPORT<br>Autumn 2025"
 author:
   - name: Steven Wyatt
@@ -24,7 +24,7 @@ citation-location: margin
 toc: true
 toc-title: Contents
 toc-location: left
-theme: journal
+# theme: journal
 fig-cap-location: top
 number-sections: false
 # backgroundcolor: '#FFE0B5'
@@ -35,8 +35,6 @@ title-block-banner-color: '#242322'
 editor_options: 
   chunk_output_type: console
 ---
-
-# THIS QUARTO DOC MAY NOT BE RENDER-READY
 
 ```{r}
 #| label: setup
@@ -64,21 +62,23 @@ param_date_cutoff <- set_cutoff_date(min_buffer_days = 21)
 
 ```
 
-# Introduction (ROUGH)
+# Introduction (placeholder)
 
-This document proposes methods, founded on statistical models, that would allow local areas to monitor whether casemix-adjusted admission thresholds (via ED) are changing over time.
+This document proposes a method, founded on statistical models, that would allow local areas to monitor whether casemix-adjusted admission thresholds (\*\*for admission via a hospital emergency department) are changing over time.
 
-We have imagined that the information in this document might ultimately be developed into a tool in which a user might choose any one of ~180 Type 1 (24 hour, consultant-led) emergency departments (EDs). The user would then be presented with a graphic displaying how admission thresholds are changing over time, and a summary of data-related facts that will have influenced the site-specific model.
+We have imagined that such information might ultimately be incorporated in a simple software application (app). Using this app, a user might choose any one of 180 Type 1 (24 hour, consultant-led) emergency departments (EDs), and be presented with a range of information to show how admission thresholds are changing over time. The app would include both graphics and text summaries of data-related facts that influence the information they see.
 
 # Methods
 
-This work was carried out using the Emergency Care Data Set (ECDS). Each ECDS record represents a patient attendance at an urgent or emergency care department. We selected the subset of records coded as unplanned attendances at Type 1 emergency departments (as given by table on NHSE confirmed Type 1 whose provenance is unknown), with an arrival date on or after 1st January 2025.
+## Data source
+
+This work relied on data from the Emergency Care Data Set (ECDS). Each ECDS record represents a patient attendance at an urgent or emergency care department. We selected the subset of records that were coded as unplanned attendances at Type 1 emergency departments (as given by table on NHSE confirmed Type 1 whose provenance is unknown), with an arrival date on or after 1st April 2025.
 
 <!--# We included all streamed patients - since these patients will have faced a triage process which could be included in the admission threshold.  -->
 
-We excluded cases were a patient left the ED before treatment was provided; where the patient died during an attendance; and where the individual was found to be dead on arrival at the ED.
+We excluded records where the patient left the ED before treatment was provided; where the patient died during an attendance; and where the individual was found to be dead on arrival at the ED.
 
-An example of the effect of these choices on the number of attendances included in the study (from 1st January 2025) can be seen in Figure X.
+Figure X provides an example of how these choices affect the number of emergency attendances included from a given provider (in this case XXXXX) . (from 1st January 2025) !!!!
 
 ```{r}
 #| label: tbl-where
@@ -89,7 +89,7 @@ An example of the effect of these choices on the number of attendances included 
 
 
 readRDS(here("data", "where_matrix.rds")) |> 
-  filter(der_provider_site_code == param_provider_site) |> 
+  filter(der_provider_site_code == "RWA01") |> 
   mutate(sigma = sum(n)) |>
   rowwise() |> 
   mutate(row_sum = sum(c_across(c(everything(), -c(der_provider_code,der_provider_site_code, n, p, sigma))))) |> 
@@ -119,27 +119,33 @@ readRDS(here("data", "where_matrix.rds")) |>
 
 ```
 
-## Data Quality
+## Data quality considerations
 
-Whilst the ECDS is recognised as a high-quality data source, there is yet considerable variation in data quality, both across provider sites and over time.
+<!--# Data quality may be assessed in several dimensions. In this project we came across quality issues that might be characterised as being: 1) accuracy-related; and 2) completeness-related.  -->
+
+Whilst the ECDS is recognised as a high-quality data source, there is yet considerable variation in data quality, both across provider sites and over time. We examine the issues we observed and detail our solutions, below.
 
 ### Data quality over time
 
-We chose a start date of 1st of January 2025 in the belief that this would 1) provide sufficient context in which to interpret current measurements of admission thresholds; and 2) minimise the variation in data quality that occurs over an extended period.
+We chose to use records in which the patient arrived at a ED on or after April 1st 2025, in the belief that this would 1) minimise the variation in data quality that occurs over an extended period; and 2) provide sufficient context in which to interpret current measurements of admission thresholds.
 
-Whilst this period data quality Unfortunately, we observed a universal step change in the number of missing values in the chief complaint field at the turn of the 2025/26 financial year. This issue influenced some of the choices we made. / limited the choices available to us.
+<!--# Whilst this period data quality Unfortunately, we observed a universal step change in the number of missing values in the chief complaint field at the turn of the 2025/26 financial year. This issue influenced some of the choices we made. / limited the choices available to us.  -->
 
-lag of a few days?
+<!--#  lag of a few days? Some 10 providers have incomplete timeseries.... what to do?  -->
 
-Providers submit data to the ECDS on a daily basis, and these data may be viewed in the ECDS to an analyst a few days later. In terms of an end date to our study period, there was another balance to achieve. We wanted to ensure that admission threshold are timely (as we have a actionable tool in mind), but we must also prioritise accuracy (which may be suspect if the data quality drops as we approach the current date). We therefore included a buffer period to increase the chances that all sites have submitted (high quality) data across every field. We have programmed a variable study end date such that the most recent results will be from the last complete week (Mon-Sun) occurring three weeks before the date the computer code was executed.
+<!--#  Providers submit data to the ECDS on a daily basis, and these data may be visible to users of the ECDS a few days later. -->
+
+There was a further balance to achieve when thinking about an end date to our period of study. With an app in mind, we wanted our estimates of admission thresholds to run close to the current date, since the objective would be to present actionable information. However, data quality can be low for very recent data, due to the way data is incrementally flowed from providers to the ECDS. We therefore programmed a rolling end date to our study and a buffer period, such that the most recent data point would cover the last complete week (Mon-Sun) occurring at least 21 days before the computer code was executed\*\*. This buffer period should increase the chances that all sites had submitted high quality data across every field.
+
+I\*\*n the case of the text and graphics presented in this document, the computer code was executed on , which makes the last complete week ...
 
 ### Data quality by site
 
-We might categorise data quality issues across provider sites as being: 1) accuracy-related; and 2) completeness-related. We examine the issues and detail our solutions, below.
+When examining data quality by site, we observed issues that could be characterised as being: 1) accuracy-related; and 2) completeness-related. Here, we will address these dimensions separately.
 
-#### 1. Accuracy of the data
+#### 1. Addressing inaccuracy
 
-Here, we can only infer that data do not represent real-world events. However, at several sites, we found that almost all patients were coded as having been sent home (FIGURE X). This is unlikely to reflect the reality and, in this case, we left with little choice but to exclude these sites.
+Removed from the data-generating processes as we are, we can only infer that data does not represent real-world events. For example, at several sites we observed that almost all patients were coded as having been sent home (FIGURE X). This data is unlikely to reflect the reality at major EDs. In this case, therefore, we left with little choice but to exclude X sites with crude admission rates below XX%.
 
 ```{r}
 #| label: tbl-accuracy
@@ -149,54 +155,65 @@ Here, we can only infer that data do not represent real-world events. However, a
 #| tbl-cap: "tbd."
 
 
-df_ecds_raw |> colnames()
-  filter()
-  count(site_name, ed_discharged)
-df_var_engineering_2of2 |>
-  select(data) |> 
-  unnest(data)
-  # slice(-c(3, 14, 20, 22)) |>
-  mutate(p = map_dbl(data, function(df) {
-    df |>
-      count(ed_discharged) |>
-      mutate(p = n/sum(n)) |>
-      filter(ed_discharged == 1) |>
-      pull(p)-1
-  }
-  )) |>
-  mutate(p_adm = abs(p)) |>
-  mutate(site_name = map_chr(data, \(df) df |> distinct(site_name) |> pull() |> as.character())) |>
-  distinct(der_provider_site_code, site_name, p_adm) |>
-  arrange(p_adm) |>
-  print(n= 11)
+# # df_ecds_raw |> colnames()
+# #   filter()
+# #   count(site_name, ed_discharged)
+# df_var_engineering_2of2 |>
+#   # select(data) |> 
+#   # unnest(data)
+#   # slice(-c(3, 14, 20, 22)) |>
+#   mutate(p = map_dbl(data, function(df) {
+#     df |>
+#       count(ed_discharged) |>
+#       mutate(p = n/sum(n)) |>
+#       filter(ed_discharged == 1) |>
+#       pull(p)-1
+#   }
+#   )) |>
+#   mutate(p_adm = abs(p)) |>
+#   mutate(site_name = map_chr(data, \(df) df |> distinct(site_name) |> pull() |> as.character())) |>
+#   distinct(der_provider_site_code, site_name, p_adm) |>
+#   arrange(p_adm) |>
+#   # print(n= 11)
+#   identity()
 
 ```
 
-#### 2. Completeness of the data
+#### 2. Addressing incompleteness
 
-Approximately x% of the xx million records in our sample (ending X September 2025) had missing values in one or more of the fields we had selected for our models. As logistic regression models will not accept missing values, we might either: 1) exclude records with missing values; 2) impute missing values; or 3) assign missing values to an explicit missing category (which was possible because the variables with missing values were exclusively categorical).
+Approximately x% of the xx million records in our sample (ending XXX September 2025) had missing values in one or more of the fields we had selected for our models. Since our intended logistic regression models would not accept missing values, we had the choice to either: 1) exclude records with missing values; 2) impute missing values; or 3) assign missing values to an explicit missing category (\*\*\*which was possible because the variables with missing values were exclusively categorical).
 
-We opted for the third approach, which allowed us to use all records - especially useful when fitting models for smaller providers - and allowed the model to use the missingness signals. Here, we made the assumption that missing data were **not** missing at random - that there was some systematic reason for the missingness. (((- are they missing at random???))
+We opted for the third approach, which allowed us to make use all the records we have. This is especially useful when fitting models for smaller providers, where the number of records (n) that we have may not greatly exceed the number of predictor variables (p) that we wish to include in our regression models. As p –\> n we get closer to an over-fitted, under-powered model, which will be more likely to produce inaccurate predictions and be incapable of distinguishing between geniune effect and random variation.
 
-If missingness is random, however, models may incorporate a false signal, which competes with other variables for explanatory power, and could ultimately distort the coefficients of interest.
+*The approach also allows the model to make use of the missingness signals. It is important to note that **here we made the assumption that missing data were not missing at random - that there was some systematic reason for the missingness. (((- are they missing at random???))***
 
-In addition to our reliance on this assumption, there is another potential hazard associated with this approach: non-constant risks by week. That is, coding practices at a site - which includes the information that goes *uncoded* - could vary greatly from week to week. When thinking about these non-constant risks, we’re particularly concerned about the fields indicating the clinician's assessment of the patient (primary diagnosis, chief complaint) – as these will be strongest predictors of admission.
+If missingness is, however, random, the models might incorporate a false signal, which would compete with other variables for explanatory power, and could ultimately distort the coefficients of interest.
 
-If, for example, admission rates of patients with a missing diagnosis vary greatly from week to week - because of large changes in the casemix that goes uncoded - this will ultimately distort the coefficients of interest.
+### Addressing non-constant risks
 
-To alert users to any anomalies caused by such non-constant risks, we produced a second set of models – one model for each site (details in the modelling section). These models would allow us to identify weeks that may be affected by this problem. (But having done some testing - we don’t anticipate these points will be a particularly common occurrence)
+There is another potential hazard which could be amplified by this approach: that of non-constant risks by week. In other words, coding practices at a site - which might include the information that goes *uncoded* - could vary greatly from week to week. And if, for example, admission rates of patients with a missing diagnosis varied greatly from week to week - because of large changes in the casemix that goes uncoded - this would distort the coefficients of interest.
 
-#### Further data processing
+<!--# When thinking about these non-constant risks, we were particularly concerned about the fields indicating the clinician's assessment of the patient (primary diagnosis, chief complaint). These fields will be strongest predictors of admission and ... see below  -->
 
-In addition to the above treatment of missing values, we chose to re-engineer *primary diagnosis* and *chief complaint* variables. As noted above, these fields are likely to be the strongest predictors for admission, but contain a large number of categories (xx diagnosis xx complaint). This may cause problems when we come to fit models - and particularly when fitting to data from providers who submit fewer records. In these cases especially, this might result in over-fitting; zero-variance predictors; and an under-powered model which is incapable of distinguishing between geniune effect and random variation.
+To highlight results that may have been affected by non-constant risks, we produced a second set of models. The details of these models, and how these models were used to identify possible non-constant risks, can be found in the **Modelling** and **Results** sections respectively).(Testing indicates, however, tht these points will not be a common occurrence.)
+
+## Additonal data processing
+
+Further to the treatment of missing values, we chose to re-engineer *primary diagnosis* and *chief complaint* variables.
+
+<!--#  As these variables indicate the clinician's assessment of a patient's condition, they are likely to be the strongest predictors of admission. -->
+
+Both of these variables, unmodified, consisted of a large number of categories (xx for diagnosis and xx for complaint). This may have caused problems when we came to fit models. (Referring back to Section x, if we can substantially reduce the number of predictors whilst minimising the loss of information, this will be beneficial.)
 
 (Is over fitting a problem here? Since diagnosis - should result in admission or not).
 
-To reduce the number of categories in both *primary diagnosis* and *chief complaint* fields, we grouped less frequent conditions together with the aid of a [3-tier hierarchy from the ECDS "Refset"](https://digital.nhs.uk/data-and-information/data-collections-and-data-sets/data-sets/emergency-care-data-set-ecds/ecds-guidance), proposed by NHSE. We did this grouping at the site level, and therefore the grouping may be slightly different for each site.
+<!--#  We therefore reduced the number of categories in both primary diagnosis and chief complaint fields. -->
 
-#### Diagnosis groups
+We therefore, in each case, grouped together less frequent conditions with the aid of a [3-tier hierarchy (the ECDS "Refset", created by NHSE)](https://digital.nhs.uk/data-and-information/data-collections-and-data-sets/data-sets/emergency-care-data-set-ecds/ecds-guidance). We conducted this grouping at the site level. Groupings may therefore vary, slightly, from site to site.
 
-When dealing with diagnosis, we left the 30 most frequent codes un-grouped, and used the most precise diagnosis label. These 30 diagnoses accounted for X% of all (records). We then grouped the remaining diagnoses at a higher (medium-precision) level and chose the 10 most frequent of these medium precision diagnosis labels.
+#### Diagnosis grouping
+
+When dealing with diagnosis, we left the 30 most frequent diagnosis codes un-grouped (thus retaining the most precise diagnosis information). These 30 diagnoses accounted for X% of all (records). We then grouped the remaining diagnoses at a higher (medium-precision) level, and chose the 10 most frequent of these medium-precision diagnosis labels.
 
 Finally, we grouped the remaining diagnoses at the highest, most general level of the hierarchy.
 
@@ -209,21 +226,21 @@ This resulted in an average of XX distinct diagnosis levels. An example for site
 #| warning: false
 #| tbl-cap: "tbd."
 
-df_var_engineering_2of2 |> 
-  filter(mod_spec == "a") |> 
-  mutate(s = map_dbl(data, function(df){
-                 df |> 
-                   distinct(diag01) |> 
-                   count() |> 
-                   pull()
-  }
-         ))
+# df_var_engineering_2of2 |> 
+#   filter(mod_spec == "a") |> 
+#   mutate(s = map_dbl(data, function(df){
+#                  df |> 
+#                    distinct(diag01) |> 
+#                    count() |> 
+#                    pull()
+#   }
+#          ))
 
 ```
 
-#### Complaint Groups
+#### Complaint grouping
 
-We followed a similar process with the chief complaint field: we left the most frequent 50 chief complaints un-grouped (these accounted for X% of chief complaints).
+We followed a similar process with the chief complaint field (note that, unmodified, the detail given in the chief complaint field is equivalent to the second level of the 3-tier hierarchy). We left the most frequent 50 chief complaints un-grouped. (these accounted for X% of chief complaints).
 
 We then grouped the remaining chief complaints at the highest, most general level.
 
@@ -236,70 +253,116 @@ This grouping resulted in an average of XX distinct complaint levels. An example
 #| warning: false
 #| tbl-cap: "tbd."
 
-df_var_engineering_2of2 |> 
-  filter(mod_spec == "b") |> 
-  mutate(s = map_dbl(data, function(df){
-                 df |> 
-                   distinct(complaint) |> 
-                   count() |> 
-                   pull()
-  }
-         ))
+# df_var_engineering_2of2 |> 
+#   filter(mod_spec == "b") |> 
+#   mutate(s = map_dbl(data, function(df){
+#                  df |> 
+#                    distinct(complaint) |> 
+#                    count() |> 
+#                    pull()
+#   }
+#          ))
   
 ```
 
-#### Quality of Diagnosis and Complaint - Rules
+## Variable selection: diagnosis or complaint?
 
-Our strategy to deal with missing values means that the model no longer sees missing values. However, they are s
+<!--#  When building a statistical model, we aim to select the most relevant and informative variables. In this project invariably have to choose between variables representing similar quantiIn our case, we desired the simplest model thtVariables that duplicate information-->
+
+In terms of variable selection, the major choice concerned two variables that each indicate a clinician's assessment of the patient's condition (which is likely to be the strongest predictor of admission):
+
+-   The *primary diagnosis* variable (hereafter referred to as *diagnosis*) indicates the main condition treated or investigated during the patient's stay in the ED.
+
+-   The *chief complaint* variable (hereafter referred to as *complaint*), on the other hand, refers to "[the primary problem a patient is presenting with, as initially assessed by a clinician](https://www.england.nhs.uk/guidance-for-emergency-departments-initial-assessment/)."
+
+Due to the likely relationship (multicollinearity) between these two variables, we would use only one in a given model. All else being equal, *diagnosis* provides more accurate and precise information about a patient’s condition, and would better allow us to control for casemix. However, if a site has coded *diagnosis* poorly when compared to *complaint*, we questioned if there would be a point at which it would be beneficial to use *complaint* instead of *diagnosis*.
+
+After assessing models using *diagnosis,* and then *complaint,* against the AUROC and Brier Score statistics, we opted to use diagnosis for each site-based model, unless:
+
+-   diagnosis completion rate at a site was below 40% in any one week
+
+    AND
+
+-   the minimum complaint completion rate in any one week was 40% higher than the minimum diagnosis completion rate in any week.
+
+There were x sites that met these criteria. In these cases, we used chief complaint in the model, in place of diagnosis. We therefore had two different model speficiations.
+
+<!--# (It is important to note that the chief complaint and acuity variables are recorded as part of an initial assessement (NHSE, 2022). They are therefore akin to presentation codes.  -->
+
+<!--# should be relevant to the task (of predicting risk of admission) and informative (ultimately allowing the model differentiate between data points)When it came to selecting a variables that indicated a clinician's assessment of a patient's condition, we had a choice to make.  -->
+
+These fields will be strongest predictors of admission and ... see below
+
+One or the other
+
+we have a choice. the field we'd most like to use is diagnosis but we also have chief complaint (a clinician's initial assessment of a patient's condition
+
+in general we use all variables relevant to the task
+
+Our strategy to deal with missing values means that,
+
+<!--#  whilst the model may no longer register missing values, the underlying missingness remains. -->
+
+we may, in some casese, have a large % of explicit missing category. which will not allow the model to
+
+which means most values identical and, as a result, the variables carry little information.
+
+This is fine some information is preferable to no information. But there may be cases where we have a choice.
+
+Indeed, we have a choice to make when deciding
+
+This is the case when thinking about fields indicating the clinician's assessment of the patient (primary diagnosis, chief complaint).
+
+ carry less information and are less likely to differentiate between data points
+
+In key variables we had a choice
+
+fields indicating the clinician's assessment of the patient (primary diagnosis, chief complaint). These fields will be strongest predictors of admission and ... see below
+
+Key variables (we expect to be..
+
+And if the underlying missingness is high An explicit missing may be high % of the values in a variable.
+
+**Choice diagnosis vs complaint**
+
+Site may have a Diagnosis may have a
 
 The strongest predictor is diagnosis – which is our preferred measure of the condition of a patient.
 
-Whilst the model may no longer perceive missing values, the underlying missingness remains as before.
+Some sites have high proportion of missing diagnosis values. And complaint better.
+
+the model no longer sees missing values. However, they are s
+
+Whilst our encoding means that the model will no longer register
 
 As far as the model is concerned, there are no longer registers missing values, but this does not change that they are missing we still see these as missingness remains as before
 
-Some sites have high proportion of missing diagnosis values. And complaint better.
+## **Model specification**
 
-##### MISSING VALUES SITE
+### Primary models
 
-A key question was, if a site has coded complaint very well, and diagnosis very poorly, is there a point at which it’s better to use complaint?
+Moving from data preparation and variable selection to the modelling stage, we fitted a separate logistic generalised additive model (logistic GAM) for each site.
 
-After tests judged against the AUROC and Brier Score statistics, we came to the conclusion that we would use diagnosis for each site-based model unless:
+As noted, we worked with two specifications, identical other than in their use of either the re-engineered *diagnosis* or *complaint* variable, as per section XXX, above.
 
-primary diagnosis completion rate at that site was below 40% in any one week AND
+Otherwise, we included variables to adjust for casemix (as far as possible), namely: *age* (as a spline-based smooth) interacting with *sex*; *acuity*; whether the patient arrived by ambulance or not; and the *referral source*. In addtion, we included time-related variables to control for weekday or weekend attendances, and whether the attendance was during the night (8 pm to 8 am).
 
-the minimum weekly chief complaint completion rate was 40% higher than the minimum weekly diagnosis completion rate.
+We intentionally omitted contextual factors such as the level of crowding and the inpatient occupancy at the time a patient was treated. Instead, we wanted to leave these factors as possible explanations for any changes seen in admission thresholds. If we were to adjust for such effects they would not, in theory, be visible in the time series.
 
-There were x sites that met these criteria. In these cases, we used chief complaint in the model, in place of diagnosis.
+### Models to identify non-constant risks
 
-We therefore had two different model types.
+As noted above (section ???), we produced a second set of models with which we aimed to highlight results from the primary models that may have been affected by non-constant risks.
 
-(It is important to note that the *chief complaint* and *acuity* variables are recorded as part of an initial assessement ([NHSE, 2022](https://www.england.nhs.uk/guidance-for-emergency-departments-initial-assessment/#:~:text=chief%20complaint%20or%20suspected%20diagnosis,initially%20assessed%20by%20a%20clinician)). They are therefore akin to presentation codes. Diagnosis codes should give greater detail about a patient’s condition, and better allow us to control for casemix.
+In preparation for this second set of models, we created an additional binary variable which indicated whether the most influential predictor, primary diagnosis (or chief complaint, where applicable), was missing or not.
 
-#### **Model specification**
+An interaction between this new variable and the *week* variable was the only difference between the secondary and primary model specifications. If this interaction exceeded a certain level in any one week, we would flag that week's result as potentially problematic.
 
-Moving from data preparation to the modelling stage, we built xxx distinct models to predict casemix-adjusted odds-of-admission ratios.
-
-We performed logistic regressions using generalised additive models (GAMs).
-
-As noted, two specifications, different only in the inclusion either of primary diagnosis or chief complaint, as per the rules above.
-
-a re-engineered diagnosis variable;
-
-Otherwise, the models were the identical, We included variables to adjust for casemix (as far as possible), namely: *age* (as a spline-based smooth) interacting with *sex*;
-
-*acuity*; *arrival mode*; and *referral source*. We included time-related variables to control for weekday / weekend, and whether the arrival was during the night (8 pm to 8 am).
-
-We intentionally omitted contextual factors, such as the level of crowding, and inpatient occupancy, at the time a patient was treated. We omitted these variables as we wanted to leave these factors as possible explanations for any changes in thresholds. If we adjust for such effects they will not - in theory - be visible in the timeseries.
-
-Our final models were run on the same random sub-sample of 1 million attendance records (from a possible 2.3 million). This sample size offered a pragmatic balance between model run times and the precision of effect size estimates.
-
-#### Models to identify non-constant risks
-
-These models contained every term in the primary model, plus an interaction between the week variable, and a binary variable which indicates whether diagnosis – being the most powerful predictor - is missing or not. If this interaction exceeds a certain level in any one week, we will flag that week as potentially problematic.
-
-#### **Reproducibility**
+## **Reproducibility**
 
 The computer code used in this analysis can be found a [GitHub repository](https://github.com/The-Strategy-Unit/tracking_adm_thresholds) (permissions currently required).
 
 # Results
+
+Show examples
+
+x records, x providers ?? If we're being selective, then why is this necessary?
