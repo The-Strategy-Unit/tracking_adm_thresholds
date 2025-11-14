@@ -34,6 +34,18 @@ get_first_monday <- function(year) {
 }
 
 
+# Function to get the first Monday of a given financial year:
+
+get_first_monday_fyear <- function(fyear) {
+  start_date <- make_date(fyear, 04, 01)
+  
+  weekday <- start_date |>
+    wday(week_start = 1)
+  
+  start_date +
+    if_else(weekday == 1, 0, 8 - weekday)
+}
+
 
 # Provide the % records complete for a specified field, x,
 # for the week with lowest completion (i.e. highest % na values) 
