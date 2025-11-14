@@ -10,6 +10,9 @@
 # THEN TAKE COMPLAINT
 # ELSE DIAG.
 
+# TODO NOTE ALSO THOSE WITH NO / V. LOW ADM RATE
+
+
 tmp_dq <- df_provider_dataqual |> 
   select(der_provider_site_code, contains("diag"), contains("complnt")) |>
   arrange(p_diag) |>
@@ -37,29 +40,54 @@ tmp_dq <- df_provider_dataqual |>
   # print(n=25) |> 
   identity()
 
-vec_providers_good_diag <- tmp_dq |> 
-  arrange(desc(min_diag)) |> 
-  slice(1:6) |> 
-  pull(der_provider_site_code)
 
 vec_providers_complaint_candidates <- tmp_dq |> 
   filter(flag == 1 ) |> 
   pull(der_provider_site_code)
 
-vec_providers_bad_diag <- tmp_dq |> 
-  filter(min_diag < 0.4) |> 
+# PROVIDERS WITH HIGH SD IN WEEKLY DIAGNOSIS RATES:
+vec_providers_diag_inconstant <- tmp_dq |> 
+  filter(flag == 0) |> 
+  slice(c(1,4)) |> 
   pull(der_provider_site_code)
 
-vec_providers_missing_weeks <- df_provider_dataqual_sdev |>
-  filter(n_wks < max(n_wks)) |>
-  count(der_provider_site_code, n_wks) |>
-  arrange(n_wks) |>
-  pull(der_provider_site_code)
-
-vec_shaky_providers <- unique(
-  c(
-    # vec_providers_missing_weeks,
-    vec_providers_bad_diag,
-    vec_providers_complaint_candidates
+vec_providers_diag <-
+  setdiff(
+    setdiff(
+      tmp_dq |> pull(der_provider_site_code),
+      vec_providers_complaint_candidates
+    ),
+    vec_providers_diag_inconstant
   )
-)
+
+
+
+# # PERHAPS REMOVE THESE
+# OR LET THE INTERACTION GRAPH DO THE WORK
+# vec_providers_low_diag <- tmp_dq |> 
+#   print(n=30)
+#   filter(sd_diag > ...) |> 
+#   pull(der_provider_site_code)
+
+# setdiff(vec_providers_low_diag, vec_providers_complaint_candidates)
+
+
+# PROVIDERS WITH INCOMPLETE TIMESERIES: (SEE MISSING WEEKS BELOW)
+# df_provider_dataqual_sdev_prep |> 
+#   count(der_provider_site_code) |> 
+#   arrange(n)
+
+# vec_providers_missing_weeks <- df_provider_dataqual_sdev |>
+#   filter(n_wks < max(n_wks)) |>
+#   count(der_provider_site_code, n_wks) |>
+#   arrange(n_wks) |>
+#   pull(der_provider_site_code)
+
+
+# vec_shaky_providers <- unique(
+#   c(
+#     # vec_providers_missing_weeks,
+#     vec_providers_bad_diag,
+#     vec_providers_complaint_candidates
+#   )
+# )

@@ -1,3 +1,4 @@
+source(here("R", "funs.R"))
 
 # A. SPECIFY MODEL FORMULA BASED ON DATA QUAL ---------------------------
 
@@ -29,7 +30,7 @@ df_provider_dataqual_mean <- return_completion_overall(der_ec_diagnosis_all) |>
   mutate(across(starts_with("p_"), ~ if_else(is.na(.), 0, .)))
 
 
-df_provider_dataqual_sdev <- 
+df_provider_dataqual_sdev_prep <- 
   return_completion_all_weeks(der_ec_diagnosis_all) |> 
   left_join(
     return_completion_all_weeks(ec_chief_complaint_snomed_ct),
@@ -42,7 +43,7 @@ df_provider_dataqual_sdev <-
   mutate(across(starts_with("p_"), ~ if_else(is.na(.), 0, .))) |> 
   select(-c(contains("valid"), n.x, n.y))
   
-df_provider_dataqual_sdev <- df_provider_dataqual_sdev |> 
+df_provider_dataqual_sdev <- df_provider_dataqual_sdev_prep |> 
   group_by(der_provider_site_code) |> 
   summarise(sd_diag = sd(p_diag), sd_complnt = sd(p_complnt), n_wks = n())
 
