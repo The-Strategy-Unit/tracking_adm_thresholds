@@ -20,6 +20,12 @@ df_ecds_raw <- dbGetQuery(con_test, query_ecds) |>
 gc()
 gc()
 
+# START AT FIRST FULL WEEK OF FYEAR:
+df_ecds_raw <- df_ecds_raw |> 
+  filter(der_ec_arrival_date_time >= as_date("2025-04-07")) 
+
+gc()
+gc()
 # # df_ecds_raw |> slice_sample(n = 50) |> view("ex_main")
 
 # 2. REFERENCE DATA FOR SNOMED CODES -------------------------------------------------------------
@@ -88,6 +94,4 @@ lkp_ethref_raw <- dbGetQuery(con_test, query_ethref) |>
 gc()
 gc()
 gc()
-
-
 
