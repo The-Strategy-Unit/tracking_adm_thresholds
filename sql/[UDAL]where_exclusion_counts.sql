@@ -73,7 +73,9 @@ SELECT
   COUNT(*) AS 'n'
 FROM [MESH_ECDS].[EC_Core]
   WHERE 1 = 1
-    AND [Der_EC_Arrival_Date_Time] >= '2025-01-01 00:00:00.000'
+    /* FOR WINDOW SPECIFIED IN REPORT - BASED ON CODE EXECUTION ON 10 NOV */
+    AND [Der_EC_Arrival_Date_Time] >= '2025-04-01 00:00:00.000'
+    AND [Der_EC_Arrival_Date_Time] < '2025-10-20 00:00:00.000'
 
   GROUP BY 
    [Der_Provider_Code],

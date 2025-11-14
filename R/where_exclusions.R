@@ -21,12 +21,12 @@ gc()
 gc()
 
 df_where_exclusions <- df_where_exclusions_raw |> 
-  arrange(der_provider_code, desc(n)) |> 
-  group_by(der_provider_code) |> 
+  arrange(der_provider_site_code, desc(n)) |> 
+  group_by(der_provider_site_code) |> 
   mutate(p = n/sum(n)) |> 
   ungroup() 
 
-# df_where_exclusions |> saveRDS(here("data", "where_matrix.rds"))
+df_where_exclusions |> saveRDS(here("data", "251110_where_matrix.rds"))
 
 param_provider_site <- "RWA01"
 
