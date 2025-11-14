@@ -6,6 +6,10 @@
 
 # source(here::here("R", "02_load.R"))
 
+
+  
+gc()
+gc()
 gc()
 gc()
 
@@ -16,7 +20,6 @@ source(here("R", "provider_dq_groups.R"))
 
 # CUT OFF DATE IS MOST RECENT SUNDAY MINUS THREE WEEKS:
 param_date_cutoff <- set_cutoff_date(min_buffer_days = 21)
-
 
 # 1. JOIN TO REFERENCE TABLES ---------------------------------------------
 
@@ -50,30 +53,43 @@ df_providers_nested <- df_ecds_joined |>
   ungroup()
 
 gc()
+gc()
 
 # TODO HERE I THINK WE'D ASSIGN SPECS BASED ON MEETING SOME CRITERIA
 # THIS IS EXAMPLE:
 
+# set.seed(1001)
 df_providers_nested_specs <- bind_rows(
   df_providers_nested |>
-    # BETTER DQ:
+    # DIAG CANDIDATES:
     filter(
-      !der_provider_site_code %in% vec_shaky_providers
+      # der_provider_site_code %in% sample(vec_providers_diag, 3) |
+      der_provider_site_code %in% vec_providers_diag |
+        der_provider_site_code %in% vec_providers_diag_inconstant
     ) |>
     cross_join(
       lkp_model_specs |>
         filter(mod_spec %in% c("a", "a1"))
     ),
   df_providers_nested |>
-    # WORSE DQ:
+    # COMPLAINT CANDIDATES:
     filter(
-      der_provider_site_code %in% vec_shaky_providers
+      # der_provider_site_code %in% sample(vec_providers_complaint_candidates, 3)
+      der_provider_site_code %in% vec_providers_complaint_candidates
     ) |>
     cross_join(
       lkp_model_specs |>
         filter(mod_spec %in% c("b", "b1"))
     )
-)
+) |> 
+  mutate(ed_name = map_chr(data, \(df) df |> distinct(site_name) |> pull() |> as.character())) |> 
+  relocate(ed_name, .after = der_provider_site_code) 
+  
+
+
+gc()
+gc()
+gc()
 
 # 3. ENGINEER VARIABLES ------------------------------------------------
   
@@ -186,6 +202,8 @@ df_var_engineering_1of2 <- df_providers_nested_specs |>
 
 gc()
 gc()
+gc()
+gc()
 
 # NOTE: SOME SITES DON'T CODE CHEST PAIN SO CAN'T BE REFERENCE LEVEL HERE.
 # df_var_engineering_1of2$data[[2]] |> 
@@ -198,7 +216,7 @@ df_var_engineering_2of2 <- df_var_engineering_1of2 |>
         df |>
       mutate(acuity = str_remove_all(ref_acuity, " level emergency care")) |>
       mutate(acuity = if_else(is.na(acuity), "NA", acuity)) |>
-      mutate(ed_discharged = case_when(
+      mutate(admitted = case_when(
         ref_disdest %in% c(
           "Discharge to ward",
           "Emergency department discharge to coronary care unit",
@@ -207,10 +225,10 @@ df_var_engineering_2of2 <- df_var_engineering_1of2 |>
           "Emergency department discharge to operating theatre",
           "Emergency department discharge to neonatal intensive care unit",
           "Emergency department discharge to special care baby unit"  
-        ) ~ 0,
+        ) ~ 1,
         # is.na(ref_disdest) & ec_discharge_status_snomed_ct == "1324201000000109" ~ 0,
-        is.na(ref_disdest) ~ 1,
-        TRUE ~ 1
+        is.na(ref_disdest) ~ 0,
+        TRUE ~ 0
       )) |>
       mutate(referral_source = case_when(
         ref_attsrc %in% c("Referred by self", "Self-referral to accident and emergency department") ~ "self",
@@ -265,7 +283,7 @@ df_var_engineering_2of2 <- df_var_engineering_1of2 |>
     ## EXCLUDING DIAG AND COMPLAINT AS REF LEVEL ALREADY SPECIFIED:
     mutate(across(c(everything(), - age, -matches("diag01$"), -matches("complaint$")), ~ as.factor(.))) |>
       # EXPLICITLY SET REF LEVEL FOR OUTCOME (NECESSARY FOR CONSISTENT METRICS):
-      mutate(ed_discharged = fct_relevel(ed_discharged, "0")) |> 
+      mutate(admitted = fct_relevel(admitted, "0")) |> 
       # SET REF LEVEL FOR OTHER CATS: (HIGH VOLUME, MODERATE EFFECT)
       mutate(acuity = fct_relevel(acuity, "Standard")) |> 
       mutate(ethnic_grp_sus = fct_relevel(ethnic_grp_sus, "British, Mixed British")) |> 
@@ -278,12 +296,15 @@ df_var_engineering_2of2 <- df_var_engineering_1of2 |>
 
 gc()
 gc()
+gc()
+gc()
+
 
   
 # ! ISSUE ! ------------------------
 # WITH DISCHARGE DESTINATION - SOME PROVIDERS HAVE FEW/NO ADMISSIONS 
 
-# df_var_engineering_2of2$data[[39]] |> count(ed_discharged)
+# df_var_engineering_2of2$data[[39]] |> count(admitted)
 # df_var_engineering_2of2$data[[39]] |> count(ref_disdest, discharge_destination_snomed_ct)
 # 
 # df_var_engineering_2of2 |> 
@@ -296,9 +317,9 @@ gc()
 #   # slice(-c(3, 14, 20, 22)) |>
 #   mutate(p = map_dbl(data, function(df) {
 #     df |> 
-#       count(ed_discharged) |>
+#       count(admitted) |>
 #       mutate(p = n/sum(n)) |> 
-#       filter(ed_discharged == 1) |> 
+#       filter(admitted == 1) |> 
 #       pull(p)-1 
 #   }
 #   )) |> 
