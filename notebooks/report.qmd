@@ -62,32 +62,32 @@ param_date_cutoff <- set_cutoff_date(min_buffer_days = 21)
 
 ```
 
-# Introduction (placeholder)
+# Introduction 
 
 In this document, we propose methods, founded on statistical models, that would allow local areas to monitor whether casemix-adjusted admission thresholds are changing over time.[^1]
 
 [^1]: For admissions via a hospital emergency department
 
-We have imagined that such information might ultimately be incorporated in a simple software application (app). Using this app, a user might choose any one of 180 Type 1 (24 hour, consultant-led) emergency departments (EDs) and be shown how admission thresholds at that site are changing over time. The app would include both graphics and text summaries of data-related facts that influence the information they are shown.
+We have imagined that such information might ultimately be incorporated in a simple software application (app). Using this app, a user might choose any one of 180 Type 1 (24 hour, consultant-led) emergency departments (EDs) and be shown how admission thresholds at that site are changing over time. The app could also include graphics and text summaries that describe how data quality and design choices have influenced the trends they are shown.
 
 # Methods
 
-*For each Type 1 ED, we aimed to show if, and by how much, thresholds for admission change over time. To achieve this, we fitted regression models to emergency care data to estimate the casemix-adjusted odds of admission for each week. The higher the odds of admission, the lower the admission threshold.*
+For each Type 1 ED, we aimed to show if, and by how much, thresholds for admission are changing over time. To achieve this, we fitted regression models to emergency care data to estimate the casemix-adjusted odds of admission for each week. The higher the odds of admission, the lower the admission threshold.
 
 ## Data source
 
-This work relied on data from the Emergency Care Data Set (ECDS). Each ECDS record represents a patient attendance at an urgent or emergency care department. We selected the subset of records that were coded as unplanned attendances at Type 1 emergency departments (as given by table on NHSE confirmed Type 1 whose provenance is unknown), with an arrival date on or after 1st April 2025.
+This work relied on data from the Emergency Care Data Set (ECDS). Each ECDS record represents a patient attendance at an urgent or emergency care department. We selected the subset of records that were coded as unplanned attendances at Type 1 emergency departments, with an arrival date between 1st April 2025 and 19th October 2025 (inclusive).
 
 We excluded records where the patient left the ED before treatment was provided; where the patient died during an attendance; and where the individual was found to be dead on arrival at the ED.
 
-Figure X provides an example of how these choices affect the number of emergency attendances included from a given provider (in this case XXXXX) . (from 1st January 2025) !!!!
+@tbl-where provides an example of how these choices affect the number of emergency attendances included from a given provider (in this case Hull Royal Infirmary).
 
 ```{r}
 #| label: tbl-where
 #| echo: false
 #| message: false
 #| warning: false
-#| tbl-cap: "tbd."
+#| tbl-cap: "The effect of our chosen exclusions on the number of emergency care attendances included for Hull Royal Infirmary."
 
 # readRDS(here("data", "251110_where_matrix.rds")) |> 
 #   filter(der_provider_site_code == "RWA01") |> 
@@ -158,28 +158,26 @@ Whilst the ECDS is recognised as a high-quality data source, there is yet consid
 
 We chose to use records in which the patient arrived at a ED on or after April 1st 2025, in the belief that this would 1) minimise the variation in data quality that occurs over an extended period; and 2) provide sufficient context in which to interpret current measurements of admission thresholds.
 
-There was a further balance to achieve when thinking about an end date to our period of study. With an app in mind, we wanted our estimates of admission thresholds to run close to the current date, since the objective would be to present actionable information. However, data quality can be low for very recent data, due to the way data is incrementally flowed from providers to the ECDS. We therefore programmed a rolling end date to our study, and a buffer period, such that the most recent data point would cover the last complete week (Mon-Sun) occurring at least 21 days before the computer code was executed.[^2] This buffer period should increase the chances that all sites had submitted high quality data across every field.
+There was a further balance to achieve when thinking about an end date to our period of study. With an app in mind, we wanted our estimates of admission thresholds to run close to the current date, since the objective would be to present relevant and actionable information. However, data quality can be low for very recent data, due to the way data is incrementally flowed from providers to the ECDS. We therefore programmed a rolling end date to our study, and a buffer period, such that the most recent data point would cover the last complete week (Mon-Sun) occurring at least 21 days before the computer code was executed.[^2] This buffer period should increase the chances that all sites had submitted high quality data across every field.
 
 [^2]: In the case of the text and graphics presented in this document, the computer code was executed on November 10th 2025, which makes the last complete week the 13-19th October 2025.
 
 ### Data quality by site
 
-When examining data quality by site, we observed issues that could be characterised as being: 1) accuracy-related; and 2) completeness-related. Here, we will address these dimensions separately.
+When examining data quality by site, we observed issues that could be characterised as being: 1) accuracy-related; and 2) completeness-related. Here, we examine these dimensions separately:
 
 #### 1. Addressing inaccuracy
 
-Detached from the data-generating and data-capture processes as we are, we can only infer that data did not represent real-world events. For example, at several sites we observed that almost all patients were coded as having been sent home, as shown in @tbl-accuracy.
+We are detached from the data-generating and data-capture processes, and therefore we can only infer that data did not represent real-world events. For example, at several sites we observed that almost all patients were coded as having been sent home, as shown in @tbl-accuracy.
 
-**Do we need an upper limit (e.g. 59% of patients attending Queen's were admitted)**
-
-This data is unlikely to reflect the reality at major EDs. In this case, therefore, we left with little choice but to exclude 5 sites with crude admission rates **below 5%.**
+This data is unlikely to reflect the reality at major EDs. In this case, therefore, we chose to exclude 5 sites with crude admission rates below 5%.
 
 ```{r}
 #| label: tbl-accuracy
 #| echo: false
 #| message: false
 #| warning: false
-#| tbl-cap: "tbd."
+#| tbl-cap: "Emergency departments with the lowest crude admission rates. We excluded sites with rates below 5%, as these are unrealistically low."
 #| cache: true
 
 readRDS(here("data", "251110_nested.rds")) |>
@@ -195,7 +193,7 @@ readRDS(here("data", "251110_nested.rds")) |>
   mutate(site_name = map_chr(data, \(df) df |> distinct(site_name) |> pull() |> as.character())) |>
   distinct(site_name, p_adm) |>
   arrange(p_adm) |> 
-  filter(p_adm < 0.05) |> 
+  filter(p_adm < 0.09) |> 
   gt() |> 
    cols_label(
     site_name = "Site of emergency department",
@@ -203,6 +201,7 @@ readRDS(here("data", "251110_nested.rds")) |>
     .fn = md
    ) |> 
   fmt_auto() |> 
+  fmt_percent(p_adm, decimals = 2) |> 
    tab_options(
     data_row.padding = px(1),
     table.font.size = "small"
@@ -210,41 +209,42 @@ readRDS(here("data", "251110_nested.rds")) |>
 
 ```
 
-#### 2. Addressing incompleteness
+#### 2. Addressing incompleteness {#sec-incompleteness}
 
-Approximately x% of the xx million records in our sample (ending 19th October 2025) had missing values in one or more of the fields we had selected for our models. Since our intended regression models would not accept missing values, we had the choice to either: 1) exclude records with missing values; 2) impute missing values; or 3) assign missing values to an explicit missing category.[^3]
+At a site level, on average, 72% of records had missing values in *at least one* of the fields we had selected for our models. Since our intended regression models would not accept missing values, we had the choice to either: 1) exclude records with missing values; 2) impute missing values; or 3) assign missing values to an explicit missing category.[^3]
 
 [^3]: This was only possible as the variables with missing values were exclusively categorical.
 
-We opted for the third approach, which allowed us to make use all the records in our study dataset. This approach especially useful when fitting models for smaller sites, where the number of records (n) we have for that site may not greatly exceed the number of predictor variables (p) that we wish to include in our regression models. As p –\> n we get closer to an over-fitted, under-powered model, which will be more likely to produce inaccurate predictions and be incapable of distinguishing between genuine effect and random variation.
+We opted for the third approach, which allowed us to make use all the records in our study dataset. This approach especially useful when fitting models for smaller sites, where the number of records (n) we have for that site may not greatly exceed the number of predictor variables (p) that we wish to include in our regression models. As p –\> n, we get closer to an over-fitted, under-powered model, which will be more likely to produce inaccurate predictions and be incapable of distinguishing between genuine effect and random variation.
 
-This approach also allows the model to make use of the missingness signals. However, it is important to note that here we made the assumption that missing data were *not* missing at random - that there was some systematic reason for the missingness. ((**check we still think this is possible /likely** ??)) If, however, missingness is random, there is a risk that models we build could incorporate a false signal. This signal would compete with other variables for explanatory power, which may ultimately distort the coefficients of interest.
+The approach we used also allows the model to make use of the missingness signals. Here, we haven't made the assumption that data were missing at random. We believed it was more likely that there was some systematic reason for the missingness. If, however, missingness was random, there is a risk that models we build could incorporate a false signal. This signal would compete with other variables for explanatory power, which may ultimately distort the coefficients of interest.
 
 ### Addressing non-constant risks
 
-There is another potential hazard which could be amplified by this approach: that of non-constant risks by week. In other words, coding practices at a site - which might include the information that goes *uncoded* - could vary greatly from week to week. And if, for example, admission rates of patients with a missing diagnosis varied greatly from week to week - because of large changes in the casemix that goes uncoded - this would distort the coefficients of interest.
+There is another potential hazard which could be amplified by the approach we took to address missing variables: that of non-constant risks by week. In other words, coding practices at a site - which might include the information that goes *uncoded* - could vary greatly from week to week. And if, for example, admission rates of patients with a missing diagnosis varied greatly from week to week - because of large changes in the casemix that goes uncoded - this would distort our coefficients of interest.
 
-To highlight results that may have been affected by non-constant risks (or what was likely to be the primary source of non-constant risks), we produced a second set of models. The details of these models, and how these models were used to identify possible non-constant risks, can be found in the **Modelling** and **Results** sections respectively).(Testing indicates, however, that these points will not be a common occurrence.)
+In order to highlight results that may have been affected by non-constant risks, we produced a second set of models. The details of these models, and how these models were used to identify possible non-constant risks, can be found in @sec-nc-risk.
 
 ## Additional data processing
 
-Further to the treatment of missing values, we chose to re-engineer the *primary diagnosis* and *chief complaint* variables. Both of these variables, unmodified, consisted of a large number of categories (xx for diagnosis and xx for complaint). Referring back to Section x, if we can substantially reduce the number of predictors whilst minimising the loss of information, we are likely to improve our models. We therefore, in each case, grouped together less frequent conditions with the aid of a [3-tier hierarchy (the ECDS "Refset", created by NHSE)](https://digital.nhs.uk/data-and-information/data-collections-and-data-sets/data-sets/emergency-care-data-set-ecds/ecds-guidance). We conducted this grouping at the site level. As a consequence, groupings may vary, slightly, from site to site.
+Further to the treatment of missing values, we chose to re-engineer the *primary diagnosis* and *chief complaint* variables. Both of these variables, unmodified, consisted of a large number of categories (850+ for diagnosis and 180+ for complaint). As implied in @sec-incompleteness, if we can substantially reduce the number of predictors whilst minimising the loss of information, we are likely to improve our models. Therefore, in each case, we grouped together less frequent conditions with the aid of a [3-tier hierarchy (the ECDS "Refset", created by NHSE)](https://digital.nhs.uk/data-and-information/data-collections-and-data-sets/data-sets/emergency-care-data-set-ecds/ecds-guidance). We conducted this grouping at the site level. As a consequence, groupings may vary, slightly, from site to site.
 
 #### Diagnosis grouping
 
-When dealing with diagnosis, we left the 30 most frequent diagnosis codes un-grouped (thus retaining the most precise diagnosis information). These 30 diagnoses accounted for **X%** of all (records). We then grouped the remaining diagnoses at a higher (medium-precision) level, and chose the 10 most frequent of these medium-precision diagnosis labels.
+Across sites, the top 30 diagnoses accounted for an average of 60% of records.[^4] When re-engineering diagnosis, we there left the 30 most frequent diagnosis codes un-grouped (thus retaining the most precise diagnosis information). We then grouped the remaining diagnoses at a higher (medium-precision) level, and chose the 10 most frequent of these medium-precision diagnosis labels. Finally, we grouped the remaining diagnoses at the highest, most general level of the hierarchy.
 
-Finally, we grouped the remaining diagnoses at the highest, most general level of the hierarchy.
+[^4]: Missing diagnoses are included in this 60%.
 
-This resulted in a median of 51 distinct diagnosis levels (lower quartile = 46, upper quartile = 52). An example for the ED at the Royal Liverpool University Hospital is shown in @tbl-diagnosis.
+This resulted in a median of 51 distinct diagnosis levels per site (lower quartile = 46, upper quartile = 52). An example for the ED at the Royal Liverpool University Hospital is shown in @tbl-diagnosis.
 
 ```{r}
 #| label: tbl-diagnosis
 #| echo: false
 #| message: false
 #| warning: false
-#| tbl-cap: "tbd."
-#| cache: true
+#| tbl-cap: "Categories in the re-engineered diagnosis variable. This data is specific to the Royal Liverpool University Hospital."
+
+df_var_engineering_2of2 <- readRDS(here("data", "251110_nested.rds"))
 
 # df_var_engineering_2of2 |> 
 #   filter(mod_spec == "a") |>
@@ -261,7 +261,7 @@ This resulted in a median of 51 distinct diagnosis levels (lower quartile = 46, 
 #     uq = quantile(s, 0.75)
 #     )
 
-readRDS(here("data", "251110_nested.rds")) |>
+df_var_engineering_2of2 |> 
   #filter(der_provider_site_code == "RWA01") |>
   filter(str_detect(ed_name, "Liverpool Uni")) |>
   # print(n=40)
@@ -303,11 +303,11 @@ locations = cells_column_labels(columns = level)
 
 #### Complaint grouping
 
-We followed a similar process with the chief complaint field.[^4] We left the most frequent 50 chief complaints un-grouped. (these accounted for \~ X% of chief complaints- use ECDS).
+We followed a similar process with the chief complaint field.[^5] We left the most frequent 50 chief complaints un-grouped (these accounted for an average of 84% of records per site).[^6] We then grouped the remaining chief complaints at the highest, most general level.
 
-[^4]: Note that, unmodified, the detail given in the chief complaint field is equivalent to the second level of the 3-tier hierarchy, so we only have two levels in this case.
+[^5]: Note that, unmodified, the detail given in the chief complaint field is equivalent to the second level of the 3-tier hierarchy, so we only have two levels in this case.
 
-We then grouped the remaining chief complaints at the highest, most general level.
+[^6]: Missing complaints are included here.
 
 This grouping resulted in a median of 65 distinct complaint levels (lower quartile = 65, upper quartile = 66). An example for the ED at Frimley Park Hospital is shown in @tbl-complaint.
 
@@ -316,7 +316,7 @@ This grouping resulted in a median of 65 distinct complaint levels (lower quarti
 #| echo: false
 #| message: false
 #| warning: false
-#| tbl-cap: "tbd."
+#| tbl-cap: "Categories in the re-engineered complaint variable. This data is specific to Frimley Park Hospital."
 #| cache: true
 
 # df_var_engineering_2of2 |>
@@ -383,15 +383,15 @@ In terms of variable selection, our major decision concerned two variables that 
 
 -   The *chief complaint* variable (hereafter referred to as *complaint*), on the other hand, refers to "[the primary problem a patient is presenting with, as initially assessed by a clinician](https://www.england.nhs.uk/guidance-for-emergency-departments-initial-assessment/)."
 
-These variables are particularly important because a clinician's assessment of the patient's condition is likely to be the strongest predictor of admission. We must choose just one, however, in a given model, due to the likely relationship (multicollinearity) between these two variables.
+These variables are particularly important because a clinician's assessment of the patient's condition is likely to be the strongest predictor of admission. We must choose just one, however, in a given model. This is due to the likely relationship (multicollinearity) between these two variables.
 
 All else being equal, *diagnosis* provides more accurate and precise information about a patient’s condition, and would thus better allow us to control for casemix. However, if a site has coded *diagnosis* poorly compared to *complaint*, we questioned if there would be a point at which it would be beneficial to use *complaint* instead of *diagnosis*.
 
-After testing models that used either *diagnosis* or *complaint,* and assessing these against the AUROC and Brier Score statistics, we opted to use diagnosis for each site-based model, unless: 1) diagnosis completion rate at a site was below 40% in any one week,**and** 2) the minimum complaint completion rate in any one week was 40% higher than the minimum diagnosis completion rate in any week.
+After testing models that used either *diagnosis* or *complaint,* and assessing these against the AUROC and Brier Score statistics, we opted to use diagnosis for each site-based model, unless: 1) diagnosis completion rate at a site was below 40% in any one week, **and** 2) the minimum complaint completion rate in any one week was 40% higher than the minimum diagnosis completion rate in any week.
 
 There were 13 sites that met these criteria. In these cases, we used chief complaint in the model, in place of diagnosis. We therefore had two different model specifications for our principle question, and two corresponding specifications for our models to assess non-constant risks.
 
-## **Model specification**
+## Model specification
 
 ### Primary models
 
@@ -399,57 +399,72 @@ We fitted a separate logistic generalised additive model (logistic GAM) for each
 
 Otherwise, we included variables to adjust for casemix (as far as possible), namely: *age* (as a spline-based smooth) interacting with *sex*; *acuity*; whether the patient arrived by ambulance or not; and the *referral source*. In addition, we included time-related variables to control for weekday or weekend attendances, and whether the attendance was during the night (8 pm to 8 am).
 
-We intentionally omitted contextual factors such as the level of crowding and the inpatient occupancy at the time a patient was treated. Instead, we wanted to leave these factors as possible explanations for any changes seen in admission thresholds. If we were to adjust for such effects they would not, in theory, be visible in the time series.
+We intentionally omitted contextual factors such as the level of crowding and the inpatient occupancy at the time a patient was treated. Instead, we wanted to leave these factors as possible explanations for any changes seen in admission thresholds. If we were to adjust for such effects they would not (in theory) be visible in the time series.
 
-### Secondary models (to identify non-constant risks)
+### Secondary models (to identify non-constant risks) {#sec-nc-risk}
 
 We produced a second set of models with which we aimed to highlight results from the primary models that may have been affected by non-constant risks.
 
 Before fitting this second set of models, we created an additional binary variable which indicated whether the most influential predictor, *diagnosis* (or *complaint*, where applicable), was missing or not. This additional term and interaction terms created between this new variable and the *week* variable were the only differences between the primary and secondary model specifications.
 
-We reasoned that the coefficients of the interaction terms should indicate non-constant risks, if they are present.[^5] To help illustrate our reasoning, we will use @fig-output-nc-risk, which shows interaction coefficients (and their 80% confidence intervals), ordered by week, for the ED at St. George's Hospital (Tooting). On this plot we have also drawn horizontal lines, showing the median value of these interaction coefficients, and lines at twice and half the median value.[^6] These latter two lines are our upper and lower bounds: if an interaction estimate and its confidence interval is fully outside these bounds, then we judged that the term – and, at root, the proportion of missing diagnoses/complaints in that week – is contributing abnormal explanatory power to the model. In this case we would flag that week's result as potentially problematic (See Section XXX)
+We reasoned that the coefficients of the interaction terms should indicate non-constant risks, if they are present.[^7] To help illustrate our reasoning, we will use @fig-nc-risk, which shows interaction coefficients (and their 80% confidence intervals), ordered by week, for the ED at St. George's Hospital (Tooting). On this plot we have also drawn horizontal lines, showing the median value of these interaction coefficients, and lines at twice and half the median value.[^8] These latter two lines are our upper and lower bounds: if an interaction estimate and its confidence interval is fully outside these bounds, then we judged that the term – and, at root, the proportion of missing diagnoses/complaints in that week – is contributing abnormal explanatory power to the model. In this case we would flag that week's result in our primary charts as being potentially problematic.
 
-[^5]: There may also be non-constant risks, by week, if we were to look at acuity, for example. However, as diagnosis and complaint are likely to be the most influential variables when estimating odds of admission, and the recording of diagnosis and complaint appears to less consistent than for other variables, we have focussed our attention here.
+[^7]: There may also be non-constant risks, by week, if we were to look at acuity, for example. However, as diagnosis and complaint are likely to be the most influential variables when estimating odds of admission, and the recording of diagnosis and complaint appears to less consistent than for other variables, we have focussed our attention here.
 
-[^6]: The median value was used as a reference level, in preference to specific odds values, as this removed the risk of the reference category being abnormal.
+[^8]: The median value was used as a reference level, in preference to specific odds values, as this removed the risk of the reference category being abnormal.
 
 ```{r}
-#| label: fig-output-nc-risk
+#| label: fig-nc-risk
 #| echo: false
 #| message: false
 #| warning: false
-#| fig-cap: "TBD.<br><br>"
+#| fig-cap: "Coefficient values for the interaction between the binary 'missing complaint' variable and the week variable (with 80% confidence intervals). Shown for St. George's Hospital (Tooting). If an interaction estimate and its confidence interval appears fully outside the area bounded by parallel dotted lines, then we took this as evidence of a non-constant risk for that week. <br><br>"
 #| column: page
 #| fig-width: 12
 #| fig-asp: 0.618
 #| out-width: "85%"
-#| cache: true
 
-# TODO: FINE-TUNE THE GRAPHIC:
 
-readRDS(here("data", "251110_df_risk_plots.RDS"))$plot_risk[[7]]
+df_risk_plots <- readRDS(here("data", "251110_df_risk_plots.RDS"))
+  
+  df_risk_plots$plot_risk[[7]] +
+    scale_y_log10() +
+    annotate(label = "0.5 x mean", "text", y = 0.6, x = as_date("2025-04-01"),  col = "grey20")+
+    annotate(label = "2 x mean", "text", y = 2.3, x = as_date("2025-04-01"),  col = "grey20")+
+    theme(
+          axis.title = element_text(size = 12),
+          axis.text = element_text(size = 10),
+          plot.title = element_blank()
+          )+
+    labs(
+      title = "St George's Hospital (Tooting)",
+      x = "\nDate (week commencing)",
+      y = str_c(
+        "Casemix-adjusted odds of admission (log scale)\n(Reference category: w/c April 7th 2025)\n"
+      )
+    )
 ```
 
 ## Presentation of results
 
-In @fig-output-1, we have illustrated how the odds of admission vary over time with the aid of a particular type of Statistical Process Control (SPC) chart - the XMR chart. This chart has two components, the “X” plot and the “mR” plot:
+In @fig-xmr, we have illustrated how the odds of admission vary over time with the aid of a particular type of Statistical Process Control (SPC) chart - the XMR chart. This chart has two components, the “X” plot and the “mR” plot:
 
--   The “X” plot (at the top of the chart) displays how the outcome of interest changes over time. Three horizontal lines represent the mean value and the upper and lower “control limits" (at 3 standard deviations from the mean value).[^7] These control limits define the expected range of variation for the process in question. If a point falls between the upper and lower control limits, then the result is considered within the bounds of natural - or “common cause” - variation, and the process is deemed stable. If, on the other hand, a point is outside the control limits, this indicates that the difference from the process mean should not be attributed to random variation. In SPC terms, there is a “special cause” for the variation.[^8]
+-   The “X” plot (at the top of the chart) displays how the outcome of interest changes over time. Three horizontal lines represent the mean value and the upper and lower “control limits" (at 3 standard deviations from the mean value).[^9] These control limits define the expected range of variation for the process in question. If a point falls between the upper and lower control limits, then the result is considered within the bounds of natural - or “common cause” - variation, and the process is deemed stable. If, on the other hand, a point is outside the control limits, this indicates that the difference from the process mean should not be attributed to random variation. In SPC terms, there is a “special cause” for the variation.[^10]
 
--   The “mR” (moving range) plot, is displayed below the X plot, on an identical horizontal axis. It shows whether the (absolute) difference between consecutive points on the X plot might be considered abnormal. Horizontal lines on the plot show the mean value and the upper control limit (at 3 standard deviations from the mean).[^9] A large change - positive or negative - between consecutive points in the X plot may result in an mR point that is above the upper control limit. In this case, the change in the outcome of interest (between consecutive points) is greater than might be expected for this process.
+-   The “mR” (moving range) plot, is displayed below the X plot, on an identical horizontal axis. It shows whether the (absolute) difference between consecutive points on the X plot might be considered abnormal. Horizontal lines on the plot show the mean value and the upper control limit (at 3 standard deviations from the mean).[^11] A large change - positive or negative - between consecutive points in the X plot may result in an mR point that is above the upper control limit. In this case, the change in the outcome of interest (between consecutive points) is greater than might be expected for this process.
 
-[^7]: To obtain control limits with the standard calculations, we must have values that are normally distributed. We therefore performed these calculations on the the raw model output values (log odds ratios), which are approximately normal, and only then transformed them.
+[^9]: To obtain control limits with the standard calculations, we must have values that are normally distributed. We therefore performed these calculations on the the raw model output values (log odds ratios), which are approximately normal, and only then transformed them.
 
-[^8]: According to **(Wheeler / Berwick? - Ask MAM)**, the presence of single data point displaying special cause variation signfies that a process shift has taken place. Moreover, specific patterns involving several common cause data points can also indicate a process shift. Whilst not covered in this document, when a process shift has occured, the control limits are often re-calibrated. We suggest that, if there were to be a re-calibration of the SPC chart
+[^10]: According to **(Wheeler / Berwick? - Ask M.A.M. for reference)**, the presence of single data point displaying special cause variation signfies that a process shift has taken place. Moreover, specific patterns involving several common cause data points can also indicate a process shift. Whilst not covered in this document, when a process shift has occured, the control limits are often re-calibrated. We suggest that, if there were to be a re-calibration of the SPC chart
 
-[^9]: Note that differences are absolute, so there is no lower control limit.
+[^11]: Note that differences are absolute, so there is no lower control limit.
 
 ```{r}
 #| label: fig-xmr
 #| echo: false
 #| message: false
 #| warning: false
-#| fig-cap: "TBD.<br><br>"
+#| fig-cap: "An XmR chart for St. George's Hospital (Tooting), showing the casemix-adjusted odds of admission between April and September 2025 (top plot), and the 'moving range' of these odds over the same period (bottom chart).<br><br>"
 #| column: page
 #| fig-width: 12
 #| fig-asp: 0.618
@@ -459,31 +474,89 @@ In @fig-output-1, we have illustrated how the odds of admission vary over time w
 df_xmr_plots <- readRDS((here::here("data", "251110_df_plots.rds")))
 
 a <- df_xmr_plots$plot_x[[7]]+
-  geom_point(colour = "grey20") 
+  geom_point(colour = "grey20") +
+   annotate(label = "Mean", "text", y = 1, x = as_date("2025-04-01"),  col = "grey20")+
+  annotate(label = "LCL", "text", y = 0.8, x = as_date("2025-04-01"),  col = "grey20")+
+  annotate(label = "UCL", "text", y = 1.30, x = as_date("2025-04-01"),  col = "grey20")+
+    theme(
+        axis.title = element_text(size = 12),
+        axis.title.x = element_blank(),
+        axis.text = element_text(size = 10),
+        plot.title = element_blank()
+        )
   # geom_point(aes(colour = NULL)) +
   # scale_color_manual(values = c("grey20", "grey20"))+
 b <- df_xmr_plots$plot_mr[[7]]+
   geom_point(colour = "grey20")+
-  theme(legend.position = "none") 
+    annotate(label = "Mean", "text", y = 0.11, x = as_date("2025-04-01"),  col = "grey20")+
+  annotate(label = "UCL", "text", y = 0.31, x = as_date("2025-04-01"),  col = "grey20")+
+  theme(legend.position = "none") +
+    theme(
+        axis.title = element_text(size = 12),
+        axis.text = element_text(size = 10),
+        plot.title = element_blank()
+        )+
+   labs(
+    x = "\nDate (week commencing)"
+   )
   
 a/b
 ```
 
-Returning to our specific case, XmR charts may prove useful if we wish to see whether an intervention, or series of interventions,[^10] has had a significant and sustained influence on admission thresholds.
+Returning to our specific case, XmR charts may prove useful if we wish to see whether an intervention, or series of interventions,[^12] has had a significant and sustained influence on admission thresholds.
 
-[^10]: Such as we might see as a consequence of the NHS neighbourhood plan
+[^12]: Such as we might see as a consequence of the NHS neighbourhood plan
 
-Looking at @fig-xmr, which shows St George's Hospital, it appears (from the X plot) that the odds of admission were relatively consistent until the last week in September. At this point, the odds increase considerably (which corresponds to a fall in the threshold for admission). What should we read into this?
+Looking at @fig-xmr, which shows St George's Hospital, it appears (from the X plot) that the casemix-adjusted odds of admission were relatively consistent from April until the last week in September. At this point, the odds of admission rise sharply (which corresponds to a fall in the threshold for admission). What should we read into this?
+
+Firstly, we see that, from the end of September, there is clear evidence of special-cause variation. This indicates the existence of unique or unusual factors influencing the admission threshold at that time, that are not normally present. The mR plot can give us an indication of the nature of these unusual factors. That is to say that, since the weekly change at the end of September is highly abnormal, the special cause variation in the X plot is likely to be the result of an isolated, quickly-appearing event, rather than a initiative that has produced change over an extended period.
+
+Given this context, one of the most likely causes here is a data quality issue. And, if we progress to @fig-xmr-risk - which includes information about weeks affected by non-constant risk - we find that non-constant risks *are* flagged in the last few weeks of the period. In this case, then, we should question the validity of these final data points. If we were to re-run the analysis at a later date (as one might, were these methods incorporated into a tool) it is possible that refreshed data would give us a more robust picture of the admission threshold in late September and early October.
 
 ```{r}
+#| label: fig-xmr-risk
+#| echo: false
+#| message: false
+#| warning: false
+#| fig-cap: "An XmR chart for St. George's Hospital (Tooting), showing the casemix-adjusted odds of admission between April and September 2025 (top plot), and the 'moving range' of these odds over the same period (bottom chart). Weeks in which non-constant risks have been identified are represented by red points.<br><br>"
+#| column: page
+#| fig-width: 12
+#| fig-asp: 0.618
+#| out-width: "85%"
 
+ 
+c <- df_xmr_plots$plot_x[[7]]+
+      geom_point(aes(colour = flag_risk), size = 2) +
+   annotate(label = "Mean", "text", y = 1, x = as_date("2025-04-01"),  col = "grey20")+
+  annotate(label = "LCL", "text", y = 0.8, x = as_date("2025-04-01"),  col = "grey20")+
+  annotate(label = "UCL", "text", y = 1.30, x = as_date("2025-04-01"),  col = "grey20")+
+    theme(
+        axis.title = element_text(size = 12),
+        axis.title.x = element_blank(),
+        axis.text = element_text(size = 10),
+        plot.title = element_blank()
+        )
+  # geom_point(aes(colour = NULL)) +
+  # scale_color_manual(values = c("grey20", "grey20"))+
+d <- df_xmr_plots$plot_mr[[7]]+
+  geom_point(aes(colour = flag_risk), size = 2) +
+   annotate(label = "Mean", "text", y = 0.11, x = as_date("2025-04-01"),  col = "grey20")+
+  annotate(label = "UCL", "text", y = 0.31, x = as_date("2025-04-01"),  col = "grey20")+
+  # theme(legend.position = "none") +
+    theme(
+        axis.title = element_text(size = 12),
+        axis.text = element_text(size = 10),
+        plot.title = element_blank(),
+        legend.text = element_text(size = 7)
+        )+
+   labs(
+    x = "\nDate (week commencing)"
+   )
+  
+c/d   
 ```
 
-Firstly, there is clear evidence of special-cause variation, indicating the existence of unique or unusual factors influencing the admission threshold, that are not normally present. The mR plot can give us an indication of the nature of these unusual factors. That's to say that, since the weekly change at the end of September is highly abnormal, the special cause variation in the X plot is likely to be the result of an isolated, quickly-appearing event, rather than a initiative that has produced change over an extended period.
-
-Given this context, the most likely cause here is a data quality issue. And, if we progress from @fig-xmr to @fig-output-nc-risk, a plot that also highlights weeks affected by non-constant risk, we indeed find that non-constant risks are highlighted in the last few weeks of the period. In this case, then, we should question the validity of these final data points. If we were to re-run the analysis at a later date (as we might, were these methods incorporated into a tool) it is possible that refreshed data give us a more robust picture of the admission threshold in late September and early October.
-
-## **Reproducibility**
+## Reproducibility
 
 The computer code used in this analysis can be found a [GitHub repository](https://github.com/The-Strategy-Unit/tracking_adm_thresholds) (permissions currently required).
 
