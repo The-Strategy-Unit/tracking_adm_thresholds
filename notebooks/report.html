@@ -2,7 +2,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
 
 <meta charset="utf-8">
-<meta name="generator" content="quarto-1.8.25">
+<meta name="generator" content="quarto-1.8.26">
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
@@ -2259,7 +2259,7 @@ background: #f8be06;
 <section id="introduction" class="level1 page-columns page-full">
 <h1>Introduction</h1>
 <p>In this document, we propose methods, founded on statistical models, that would allow local areas to monitor whether casemix-adjusted admission thresholds are changing over time.<a href="#fn1" class="footnote-ref" id="fnref1" role="doc-noteref"><sup>1</sup></a></p>
-<div class="no-row-height column-margin column-container"><div id="fn1"><p><sup>1</sup> For admissions via a hospital emergency department</p></div></div><p>We have imagined that such information might ultimately be incorporated in a simple software application (app). Using this app, a user might choose any one of 180 Type 1 (24 hour, consultant-led) emergency departments (EDs) and be shown how admission thresholds at that site are changing over time. The app could also include graphics and text summaries that describe how data quality and design choices have influenced the trends they are shown.</p>
+<div class="no-row-height column-margin column-container"><div id="fn1"><p><sup>1</sup> For admissions via a hospital emergency department</p></div></div><p>We have imagined that such information might ultimately be incorporated in a simple software application (app). Using this app, a user might choose any one of 180 Type 1 (24 hour, consultant-led) emergency departments (EDs) and be shown how admission thresholds at that site are changing over time. The app could also include graphics and text summaries to illustrate how data quality and model design choices have influenced the trends they are shown.</p>
 </section>
 <section id="methods" class="level1 page-columns page-full">
 <h1>Methods</h1>
@@ -2277,20 +2277,20 @@ Table 1: The effect of our chosen exclusions on the number of emergency care at
 </figcaption>
 <div aria-describedby="tbl-where-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
 <div class="cell-output-display">
-<div id="groafczbsb" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
-<style>#groafczbsb table {
+<div id="lmpfmyfwax" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
+<style>#lmpfmyfwax table {
 font-family: system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
 -webkit-font-smoothing: antialiased;
 -moz-osx-font-smoothing: grayscale;
 }
-#groafczbsb thead, #groafczbsb tbody, #groafczbsb tfoot, #groafczbsb tr, #groafczbsb td, #groafczbsb th {
+#lmpfmyfwax thead, #lmpfmyfwax tbody, #lmpfmyfwax tfoot, #lmpfmyfwax tr, #lmpfmyfwax td, #lmpfmyfwax th {
 border-style: none;
 }
-#groafczbsb p {
+#lmpfmyfwax p {
 margin: 0;
 padding: 0;
 }
-#groafczbsb .gt_table {
+#lmpfmyfwax .gt_table {
 display: table;
 border-collapse: collapse;
 line-height: normal;
@@ -2315,11 +2315,11 @@ border-left-style: none;
 border-left-width: 2px;
 border-left-color: #D3D3D3;
 }
-#groafczbsb .gt_caption {
+#lmpfmyfwax .gt_caption {
 padding-top: 4px;
 padding-bottom: 4px;
 }
-#groafczbsb .gt_title {
+#lmpfmyfwax .gt_title {
 color: #333333;
 font-size: 125%;
 font-weight: initial;
@@ -2330,7 +2330,7 @@ padding-right: 5px;
 border-bottom-color: #FFFFFF;
 border-bottom-width: 0;
 }
-#groafczbsb .gt_subtitle {
+#lmpfmyfwax .gt_subtitle {
 color: #333333;
 font-size: 85%;
 font-weight: initial;
@@ -2341,7 +2341,7 @@ padding-right: 5px;
 border-top-color: #FFFFFF;
 border-top-width: 0;
 }
-#groafczbsb .gt_heading {
+#lmpfmyfwax .gt_heading {
 background-color: #FFFFFF;
 text-align: center;
 border-bottom-color: #FFFFFF;
@@ -2352,12 +2352,12 @@ border-right-style: none;
 border-right-width: 1px;
 border-right-color: #D3D3D3;
 }
-#groafczbsb .gt_bottom_border {
+#lmpfmyfwax .gt_bottom_border {
 border-bottom-style: solid;
 border-bottom-width: 2px;
 border-bottom-color: #D3D3D3;
 }
-#groafczbsb .gt_col_headings {
+#lmpfmyfwax .gt_col_headings {
 border-top-style: solid;
 border-top-width: 2px;
 border-top-color: #D3D3D3;
@@ -2371,7 +2371,7 @@ border-right-style: none;
 border-right-width: 1px;
 border-right-color: #D3D3D3;
 }
-#groafczbsb .gt_col_heading {
+#lmpfmyfwax .gt_col_heading {
 color: #333333;
 background-color: #FFFFFF;
 font-size: 100%;
@@ -2390,7 +2390,7 @@ padding-left: 5px;
 padding-right: 5px;
 overflow-x: hidden;
 }
-#groafczbsb .gt_column_spanner_outer {
+#lmpfmyfwax .gt_column_spanner_outer {
 color: #333333;
 background-color: #FFFFFF;
 font-size: 100%;
@@ -2401,13 +2401,13 @@ padding-bottom: 0;
 padding-left: 4px;
 padding-right: 4px;
 }
-#groafczbsb .gt_column_spanner_outer:first-child {
+#lmpfmyfwax .gt_column_spanner_outer:first-child {
 padding-left: 0;
 }
-#groafczbsb .gt_column_spanner_outer:last-child {
+#lmpfmyfwax .gt_column_spanner_outer:last-child {
 padding-right: 0;
 }
-#groafczbsb .gt_column_spanner {
+#lmpfmyfwax .gt_column_spanner {
 border-bottom-style: solid;
 border-bottom-width: 2px;
 border-bottom-color: #D3D3D3;
@@ -2418,10 +2418,10 @@ overflow-x: hidden;
 display: inline-block;
 width: 100%;
 }
-#groafczbsb .gt_spanner_row {
+#lmpfmyfwax .gt_spanner_row {
 border-bottom-style: hidden;
 }
-#groafczbsb .gt_group_heading {
+#lmpfmyfwax .gt_group_heading {
 padding-top: 8px;
 padding-bottom: 8px;
 padding-left: 5px;
@@ -2446,7 +2446,7 @@ border-right-color: #D3D3D3;
 vertical-align: middle;
 text-align: left;
 }
-#groafczbsb .gt_empty_group_heading {
+#lmpfmyfwax .gt_empty_group_heading {
 padding: 0.5px;
 color: #333333;
 background-color: #FFFFFF;
@@ -2460,13 +2460,13 @@ border-bottom-width: 2px;
 border-bottom-color: #D3D3D3;
 vertical-align: middle;
 }
-#groafczbsb .gt_from_md > :first-child {
+#lmpfmyfwax .gt_from_md > :first-child {
 margin-top: 0;
 }
-#groafczbsb .gt_from_md > :last-child {
+#lmpfmyfwax .gt_from_md > :last-child {
 margin-bottom: 0;
 }
-#groafczbsb .gt_row {
+#lmpfmyfwax .gt_row {
 padding-top: 1px;
 padding-bottom: 1px;
 padding-left: 5px;
@@ -2484,7 +2484,7 @@ border-right-color: #D3D3D3;
 vertical-align: middle;
 overflow-x: hidden;
 }
-#groafczbsb .gt_stub {
+#lmpfmyfwax .gt_stub {
 color: #333333;
 background-color: #FFFFFF;
 font-size: 100%;
@@ -2496,7 +2496,7 @@ border-right-color: #D3D3D3;
 padding-left: 5px;
 padding-right: 5px;
 }
-#groafczbsb .gt_stub_row_group {
+#lmpfmyfwax .gt_stub_row_group {
 color: #333333;
 background-color: #FFFFFF;
 font-size: 100%;
@@ -2509,13 +2509,13 @@ padding-left: 5px;
 padding-right: 5px;
 vertical-align: top;
 }
-#groafczbsb .gt_row_group_first td {
+#lmpfmyfwax .gt_row_group_first td {
 border-top-width: 2px;
 }
-#groafczbsb .gt_row_group_first th {
+#lmpfmyfwax .gt_row_group_first th {
 border-top-width: 2px;
 }
-#groafczbsb .gt_summary_row {
+#lmpfmyfwax .gt_summary_row {
 color: #333333;
 background-color: #FFFFFF;
 text-transform: inherit;
@@ -2524,14 +2524,14 @@ padding-bottom: 8px;
 padding-left: 5px;
 padding-right: 5px;
 }
-#groafczbsb .gt_first_summary_row {
+#lmpfmyfwax .gt_first_summary_row {
 border-top-style: solid;
 border-top-color: #D3D3D3;
 }
-#groafczbsb .gt_first_summary_row.thick {
+#lmpfmyfwax .gt_first_summary_row.thick {
 border-top-width: 2px;
 }
-#groafczbsb .gt_last_summary_row {
+#lmpfmyfwax .gt_last_summary_row {
 padding-top: 8px;
 padding-bottom: 8px;
 padding-left: 5px;
@@ -2540,7 +2540,7 @@ border-bottom-style: solid;
 border-bottom-width: 2px;
 border-bottom-color: #D3D3D3;
 }
-#groafczbsb .gt_grand_summary_row {
+#lmpfmyfwax .gt_grand_summary_row {
 color: #333333;
 background-color: #FFFFFF;
 text-transform: inherit;
@@ -2549,7 +2549,7 @@ padding-bottom: 8px;
 padding-left: 5px;
 padding-right: 5px;
 }
-#groafczbsb .gt_first_grand_summary_row {
+#lmpfmyfwax .gt_first_grand_summary_row {
 padding-top: 8px;
 padding-bottom: 8px;
 padding-left: 5px;
@@ -2558,7 +2558,7 @@ border-top-style: double;
 border-top-width: 6px;
 border-top-color: #D3D3D3;
 }
-#groafczbsb .gt_last_grand_summary_row_top {
+#lmpfmyfwax .gt_last_grand_summary_row_top {
 padding-top: 8px;
 padding-bottom: 8px;
 padding-left: 5px;
@@ -2567,10 +2567,10 @@ border-bottom-style: double;
 border-bottom-width: 6px;
 border-bottom-color: #D3D3D3;
 }
-#groafczbsb .gt_striped {
+#lmpfmyfwax .gt_striped {
 background-color: rgba(128, 128, 128, 0.05);
 }
-#groafczbsb .gt_table_body {
+#lmpfmyfwax .gt_table_body {
 border-top-style: solid;
 border-top-width: 2px;
 border-top-color: #D3D3D3;
@@ -2578,7 +2578,7 @@ border-bottom-style: solid;
 border-bottom-width: 2px;
 border-bottom-color: #D3D3D3;
 }
-#groafczbsb .gt_footnotes {
+#lmpfmyfwax .gt_footnotes {
 color: #333333;
 background-color: #FFFFFF;
 border-bottom-style: none;
@@ -2591,7 +2591,7 @@ border-right-style: none;
 border-right-width: 2px;
 border-right-color: #D3D3D3;
 }
-#groafczbsb .gt_footnote {
+#lmpfmyfwax .gt_footnote {
 margin: 0px;
 font-size: 90%;
 padding-top: 4px;
@@ -2599,7 +2599,7 @@ padding-bottom: 4px;
 padding-left: 5px;
 padding-right: 5px;
 }
-#groafczbsb .gt_sourcenotes {
+#lmpfmyfwax .gt_sourcenotes {
 color: #333333;
 background-color: #FFFFFF;
 border-bottom-style: none;
@@ -2612,64 +2612,64 @@ border-right-style: none;
 border-right-width: 2px;
 border-right-color: #D3D3D3;
 }
-#groafczbsb .gt_sourcenote {
+#lmpfmyfwax .gt_sourcenote {
 font-size: 90%;
 padding-top: 4px;
 padding-bottom: 4px;
 padding-left: 5px;
 padding-right: 5px;
 }
-#groafczbsb .gt_left {
+#lmpfmyfwax .gt_left {
 text-align: left;
 }
-#groafczbsb .gt_center {
+#lmpfmyfwax .gt_center {
 text-align: center;
 }
-#groafczbsb .gt_right {
+#lmpfmyfwax .gt_right {
 text-align: right;
 font-variant-numeric: tabular-nums;
 }
-#groafczbsb .gt_font_normal {
+#lmpfmyfwax .gt_font_normal {
 font-weight: normal;
 }
-#groafczbsb .gt_font_bold {
+#lmpfmyfwax .gt_font_bold {
 font-weight: bold;
 }
-#groafczbsb .gt_font_italic {
+#lmpfmyfwax .gt_font_italic {
 font-style: italic;
 }
-#groafczbsb .gt_super {
+#lmpfmyfwax .gt_super {
 font-size: 65%;
 }
-#groafczbsb .gt_footnote_marks {
+#lmpfmyfwax .gt_footnote_marks {
 font-size: 75%;
 vertical-align: 0.4em;
 position: initial;
 }
-#groafczbsb .gt_asterisk {
+#lmpfmyfwax .gt_asterisk {
 font-size: 100%;
 vertical-align: 0;
 }
-#groafczbsb .gt_indent_1 {
+#lmpfmyfwax .gt_indent_1 {
 text-indent: 5px;
 }
-#groafczbsb .gt_indent_2 {
+#lmpfmyfwax .gt_indent_2 {
 text-indent: 10px;
 }
-#groafczbsb .gt_indent_3 {
+#lmpfmyfwax .gt_indent_3 {
 text-indent: 15px;
 }
-#groafczbsb .gt_indent_4 {
+#lmpfmyfwax .gt_indent_4 {
 text-indent: 20px;
 }
-#groafczbsb .gt_indent_5 {
+#lmpfmyfwax .gt_indent_5 {
 text-indent: 25px;
 }
-#groafczbsb .katex-display {
+#lmpfmyfwax .katex-display {
 display: inline-flex !important;
 margin-bottom: 0.75em !important;
 }
-#groafczbsb div.Reactable > div.rt-table > div.rt-thead > div.rt-tr.rt-tr-group-header > div.rt-th-group:after {
+#lmpfmyfwax div.Reactable > div.rt-table > div.rt-thead > div.rt-tr.rt-tr-group-header > div.rt-th-group:after {
 height: 0px !important;
 }
 </style>
@@ -2683,42 +2683,22 @@ height: 0px !important;
     </tr>
   </thead>
   <tbody class="gt_table_body">
-    <tr><td headers="exclusion" class="gt_row gt_left"> left before treatment; </td>
+    <tr><td headers="exclusion" class="gt_row gt_left">Left before treatment</td>
 <td headers="n_before_excl" class="gt_row gt_right">67,840 </td>
-<td headers="n_excl" class="gt_row gt_right">5,561 </td>
-<td headers="n_after_excl" class="gt_row gt_right">62,279 </td></tr>
-    <tr><td headers="exclusion" class="gt_row gt_left"> planned; </td>
-<td headers="n_before_excl" class="gt_row gt_right">62,279 </td>
-<td headers="n_excl" class="gt_row gt_right">1,543 </td>
-<td headers="n_after_excl" class="gt_row gt_right">60,736 </td></tr>
-    <tr><td headers="exclusion" class="gt_row gt_left"> planned;  left before treatment; </td>
-<td headers="n_before_excl" class="gt_row gt_right">60,736 </td>
-<td headers="n_excl" class="gt_row gt_right">  224 </td>
-<td headers="n_after_excl" class="gt_row gt_right">60,512 </td></tr>
-    <tr><td headers="exclusion" class="gt_row gt_left"> died in ED; </td>
-<td headers="n_before_excl" class="gt_row gt_right">60,512 </td>
-<td headers="n_excl" class="gt_row gt_right">  129 </td>
-<td headers="n_after_excl" class="gt_row gt_right">60,383 </td></tr>
-    <tr><td headers="exclusion" class="gt_row gt_left"> sex-other; </td>
-<td headers="n_before_excl" class="gt_row gt_right">60,383 </td>
-<td headers="n_excl" class="gt_row gt_right">   11 </td>
+<td headers="n_excl" class="gt_row gt_right">5,789 (8.5%) </td>
+<td headers="n_after_excl" class="gt_row gt_right">62,051 </td></tr>
+    <tr><td headers="exclusion" class="gt_row gt_left">Planned</td>
+<td headers="n_before_excl" class="gt_row gt_right">62,051 </td>
+<td headers="n_excl" class="gt_row gt_right">1,544 (2.3%) </td>
+<td headers="n_after_excl" class="gt_row gt_right">60,735 </td></tr>
+    <tr><td headers="exclusion" class="gt_row gt_left">Died in ED</td>
+<td headers="n_before_excl" class="gt_row gt_right">60,735 </td>
+<td headers="n_excl" class="gt_row gt_right">  131 (0.2%) </td>
+<td headers="n_after_excl" class="gt_row gt_right">60,381 </td></tr>
+    <tr><td headers="exclusion" class="gt_row gt_left">Sex: other</td>
+<td headers="n_before_excl" class="gt_row gt_right">60,381 </td>
+<td headers="n_excl" class="gt_row gt_right">   11 (0.0%) </td>
 <td headers="n_after_excl" class="gt_row gt_right">60,372 </td></tr>
-    <tr><td headers="exclusion" class="gt_row gt_left"> sex-other;  left before treatment; </td>
-<td headers="n_before_excl" class="gt_row gt_right">60,372 </td>
-<td headers="n_excl" class="gt_row gt_right">    3 </td>
-<td headers="n_after_excl" class="gt_row gt_right">60,369 </td></tr>
-    <tr><td headers="exclusion" class="gt_row gt_left"> DOA;  died in ED; </td>
-<td headers="n_before_excl" class="gt_row gt_right">60,369 </td>
-<td headers="n_excl" class="gt_row gt_right">    2 </td>
-<td headers="n_after_excl" class="gt_row gt_right">60,367 </td></tr>
-    <tr><td headers="exclusion" class="gt_row gt_left"> DOA;  left before treatment; </td>
-<td headers="n_before_excl" class="gt_row gt_right">60,367 </td>
-<td headers="n_excl" class="gt_row gt_right">    1 </td>
-<td headers="n_after_excl" class="gt_row gt_right">60,366 </td></tr>
-    <tr><td headers="exclusion" class="gt_row gt_left"> planned;  DOA; </td>
-<td headers="n_before_excl" class="gt_row gt_right">60,366 </td>
-<td headers="n_excl" class="gt_row gt_right">    1 </td>
-<td headers="n_after_excl" class="gt_row gt_right">60,365 </td></tr>
   </tbody>
   
 </table>
@@ -3203,7 +3183,7 @@ height: 0px !important;
 </section>
 <section id="additional-data-processing" class="level2 page-columns page-full">
 <h2 class="anchored" data-anchor-id="additional-data-processing">Additional data processing</h2>
-<p>Further to the treatment of missing values, we chose to re-engineer the <em>primary diagnosis</em> and <em>chief complaint</em> variables. Both of these variables, unmodified, consisted of a large number of categories (850+ for diagnosis and 180+ for complaint). As implied in <a href="#sec-incompleteness" class="quarto-xref">Section 2.2.2.2</a>, if we can substantially reduce the number of predictors whilst minimising the loss of information, we are likely to improve our models. Therefore, in each case, we grouped together less frequent conditions with the aid of a <a href="https://digital.nhs.uk/data-and-information/data-collections-and-data-sets/data-sets/emergency-care-data-set-ecds/ecds-guidance">3-tier hierarchy (the ECDS “Refset”, created by NHSE)</a>. We conducted this grouping at the site level. As a consequence, groupings may vary, slightly, from site to site.</p>
+<p>Further to the treatment of missing values, we chose to re-engineer the <em>primary diagnosis</em> and <em>chief complaint</em> variables. Both of these variables, unmodified, consisted of a large number of categories (9,800+ for diagnosis and 200+ for complaint). As implied in <a href="#sec-incompleteness" class="quarto-xref">Section 2.2.2.2</a>, if we can substantially reduce the number of predictors whilst minimising the loss of information, we are likely to improve our models. Therefore, in each case, we grouped together less frequent conditions with the aid of a <a href="https://digital.nhs.uk/data-and-information/data-collections-and-data-sets/data-sets/emergency-care-data-set-ecds/ecds-guidance">3-tier hierarchy (the ECDS “Refset”, created by NHSE)</a>. We conducted this grouping at the site level. As a consequence, groupings may vary, slightly, from site to site.</p>
 <section id="diagnosis-grouping" class="level4 page-columns page-full">
 <h4 class="anchored" data-anchor-id="diagnosis-grouping">Diagnosis grouping</h4>
 <p>Across sites, the top 30 diagnoses accounted for an average of 60% of records.<a href="#fn4" class="footnote-ref" id="fnref4" role="doc-noteref"><sup>4</sup></a> When re-engineering diagnosis, we there left the 30 most frequent diagnosis codes un-grouped (thus retaining the most precise diagnosis information). We then grouped the remaining diagnoses at a higher (medium-precision) level, and chose the 10 most frequent of these medium-precision diagnosis labels. Finally, we grouped the remaining diagnoses at the highest, most general level of the hierarchy.</p>
