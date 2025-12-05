@@ -1,0 +1,647 @@
+---
+title: "Changes in Thresholds for<br>Hospital Admission Via Emergency Department"
+subtitle: "A National-level analysis<br><br><br>DRAFT REPORT<br>Winter 2025"
+author:
+  - name: Steven Wyatt
+    email: swyatt@nhs.net
+    corresponding: TRUE
+    affiliation: The Strategy Unit
+  - name: Andrew Jones
+    email: swyatt@nhs.net
+    corresponding: FALSE
+# date: 2024-11-29
+format:
+  html:
+    html-table-processing: none
+    # code-fold: true
+    # code-tools: true
+    embed-resources: true
+    grid:
+      margin-width: 240px
+  pdf: default
+reference-location: margin
+citation-location: margin
+toc: true
+toc-title: Contents
+toc-location: left
+# theme: journal
+fig-cap-location: top
+number-sections: false
+# backgroundcolor: '#FFE0B5'
+title-block-banner: '#f8be06'
+title-block-banner-color: '#242322'
+# mainfont: Gill Sans MT
+# mainfont: Helvetica
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r}
+#| label: setup
+#| include: false
+
+library("gt")
+library("here") 
+library("arrow")
+library("dplyr")
+library("purrr")
+library("readr") 
+library("tidyr")
+library("tibble")
+library("tsibble")
+library("forcats")
+library("ggplot2") 
+library("janitor")
+library("stringr")
+library("gtExtras") 
+library("lubridate")
+
+
+plot_condition_over_time <- function(df) {
+  df |>
+    ggplot(aes(as_date(year_quarter), n, group = diag, col = diag)) +
+    geom_line() +
+    geom_point(size = 0.6) +
+    geom_blank(aes(y = 0)) +
+    facet_wrap(vars(diag), scales = "free_y") +
+    theme_minimal() +
+    theme(
+      strip.text = element_text(size = 7),
+      legend.position = "none",
+      axis.text = element_text(size = 7),
+      axis.title = element_text(size = 7),
+    )
+}
+
+```
+
+# Introduction
+
+# Methods
+
+## Data source
+
+This work relied on data from the Emergency Care Data Set (ECDS). Each ECDS record represents a patient attendance at an urgent or emergency care department. We selected the subset of records that were coded as unplanned attendances at Type 1 emergency departments, with an arrival date between 1st April 2019 and 31st March 2025 (inclusive).
+
+We excluded records where the patient left the ED before treatment was provided; where the patient died during an attendance; and where the individual was found to be dead on arrival at the ED.
+
+## Data quality and use of sampling
+
+Whilst the ECDS is recognised as a high-quality data source, there is yet considerable variation in data quality, both across provider sites and over time.
+
+Looking at data over a 7 year period - changes to codes, variation in coding practices over time and by provider.
+
+To increase the chances that our findings would be valid and reliable, we conducted the analysis on data from a sample of providers. This sample was non-random: we included a provider in the sample if the quality of their data submissions met our requirements.
+
+Whilst sampling should improve the reliability and validity of our results, we can only make general statements about the association between testing thresholds and bed occupancy if our sample of providers is *representative* of the population of providers. That is to say that, on aggregate, the providers in our sample should have similar characteristics to those in our population.
+
+There is a trade-off to be made here. The larger our sample of providers, the more likely it is to be representative of the population of providers. However, the larger we make our sample, the more we compromise on data quality, which will likely decrease the reliability of our results.
+
+Details of our approach to this trade-off, as well as our data quality criteria, sampling methods, and the measures of representation, can be found in
+
+### Sampling
+
+Explain: Primarily seeking to minimise the non-constant risk of diagnosis and acuity over time.
+
+#### Broad requirements
+
+Sites' completion of each of di**agnosis, acuity, and chief complaint fields** **must exceed 75%** for every quarter over the period studied. (Left us with 20 sites from a qualifying population of 138 sites).
+
+Sites in "the population" had to have existed throughout the period of study without a change in site code.
+
+#### Further eliminations - based on variability
+
+Within these bounds, the variation in diagnosis completion rates must not exceed a certain level. We excluded a further 3 sites where the average increase completion rates over the period of study was greater than 3% per year. We excluded one further site which showed two large step changes in rates of diagnosis completion.
+
+<br>
+
+```{r}
+#| label: fig-diag-completion
+#| echo: false
+#| message: false
+#| warning: false
+#| fig-cap: "<br><br>"
+#| column: page
+#| fig-width: 12
+#| fig-asp: 0.618
+#| out-width: "85%"
+
+
+readRDS(here("data", "251204_qdf_diag_consistency.rds")) |>
+  tidyr::complete(der_provider_site_code, year_quarter) |> 
+  mutate(p = if_else(is.na(p), 0, p)) |> 
+  ggplot(aes(as_date(year_quarter), p, group = diag_descr_snomed, col = diag_descr_snomed))+
+  geom_line(alpha = .5, col = "dodgerblue2")+
+  geom_smooth(method = "lm", se = F, alpha = .3)+
+  geom_point(size = 0.6, col = "dodgerblue2")+
+  geom_blank(aes(y = 0))+
+  facet_wrap(vars(der_provider_site_code))+
+  # facet_wrap(vars(der_provider_site_code), scales = "free_y")+
+  theme_minimal()+
+  scale_y_continuous(labels = scales::percent)+
+  theme(
+    strip.text = element_text(size = 8),
+    legend.position = "none",
+    axis.text = element_text(size = 6),
+    axis.title = element_text(size = 8),
+  )+
+  labs(
+    x = "\nDate (quarter commencing)",
+    y = "Percentage of missing diagnosis values\n"
+    )
+
+
+```
+
+#### Continuity of outcome variable
+
+Finally, we checked that our intended outcome variable (admitted or not) was complete throughout the study period for each site in our working sample. We also established that changes in the crude rate of admission did not exceed +/-10% from any one quarter to the next, which might be indicative of a data quality issue.
+
+```{r}
+#| label: fig-admitted-completion
+#| echo: false
+#| message: false
+#| warning: false
+#| fig-cap: "<br><br>"
+#| column: page
+#| fig-width: 12
+#| fig-asp: 0.618
+#| out-width: "85%"
+
+readRDS(here("data", "251204_dfq_outcome_ts.rds")) |> 
+  ggplot(aes(as_date(year_quarter), p_adm))+
+  geom_line()+
+  geom_point(size=.6)+
+  geom_blank(aes(y= 0))+
+  theme_minimal()+
+  theme(
+    strip.text = element_text(size = 6),
+    axis.text = element_text(size = 6),
+    axis.title = element_text(size = 9)
+    )+
+  scale_y_continuous(labels = scales::percent, breaks = c(0, 0.2, 0.4))+
+  # facet_wrap(vars(str_c(der_provider_site_code, "\n", site_name)))+
+  facet_wrap(vars(der_provider_site_code))+
+  labs(x = "\nDate (quarter commencing)", y = "% patients admitted\n")
+
+
+
+
+```
+
+### Sample sites and representation
+
+The sites meeting the data quality criteria we set are named in table X. Table y shows how the characteristics of EDs in our sample compare to the characteristics of EDs nationally.
+
+The patient casemix is broadly representative of those who attended EDs in the period. The sample of providers is slightly skewed.   
+
+::: panel-tabset
+## Sites in sample
+
+```{r}
+#| label: tbl-sample-sites
+#| tbl-cap: "A list of sites used in this analysis."
+#| echo: false
+#| message: false
+#| column: page
+
+
+readRDS(here("data", "251204_df_sample_sites.rds")) |>
+   gt() |>
+  fmt_auto() |>
+  tab_style(
+    style = list(
+      cell_text(weight = "bold")
+    ),
+    locations = cells_column_labels(c(site_name, trust_name))
+  ) |>
+  tab_options(
+    data_row.padding = px(1),
+    table.font.size = "small"
+  )
+
+
+
+```
+
+## How representative is this sample?
+
+```{r}
+#| label: tbl-representation
+#| tbl-cap: "Table comparing selected characteristics of the sample of sites used in this analysis with the characteristics of all qualifying sites across England."
+#| echo: false
+#| message: false
+#| column: page
+
+readRDS(here("data", "251204_table_representation.rds")) |> 
+    gt() |> 
+  opt_row_striping(row_striping = F) |> 
+  fmt_auto() |> 
+  cols_label(
+    rep_diff = "Representation:<br>Sample vs Pop",
+    .fn = md
+  ) |> 
+  tab_style(
+    style = list(
+      cell_text(transform = "capitalize", weight = "bold")
+    ),
+    # different location
+    # locations = cells_column_labels(everything())
+    locations = cells_column_labels(1:3)
+  ) |> 
+  fmt_percent(rows = c(2:24), decimals = 0) |>
+  fmt_percent(columns = 4, decimals = 0) |>
+  # sub_values(
+  #   rows = 1,  fn = function(x) x >= 0 & x < 1,
+  #            replacement = "") |> 
+  tab_row_group(
+    label = "Patient demographics:",
+    rows =  str_detect(variable, "age|depriv|region_")
+  ) |> 
+  tab_row_group(
+    label = "Case-mix-related:",
+    rows =  str_detect(variable, "arrive_|admitted")
+  ) |> 
+  tab_row_group(
+    label = "Provider-related (23/24):",
+    rows =  str_detect(variable, "att|also|4h|12h")
+  ) |> 
+  tab_row_group(
+    label = "",
+    rows =  str_detect(variable, "n_sites|23")
+  ) |>
+  tab_style(
+    style = cell_text(weight = "bold"),
+    locations = cells_row_groups(groups = c(1, 2, 3, 4))
+  ) |> 
+  gt_highlight_cols(sample, fill = "grey", alpha = 0.1) |> 
+  tab_options(
+    data_row.padding = px(1),
+    table.font.size = "small"
+  )
+
+  
+
+```
+:::
+
+## Data processing
+
+A variable to indicate the condition of the patient which, along with acuity, will be the most powerful predictor of admission.
+
+Notes on diagnosis from phase I.
+
+### Diagnosis
+
+A variable that captures the clinical features of a patient's condition. disease or problem. or other factors influencing 
+
+
+But changes in the codes used over the period of study meant that the ECDS refset was impractical due to the number of codes deprecated - a big group. Thus we used top 30 diagnosis codes by freq at level 3.
+
+having excluded the top 30 diagnoses codes, we then switched to chief complaint, and used the top 20 complaints.
+
+With the remaining codes we mapped complaint to the ECDS refset hierachy. Whilst there were around 40 instances, we were able to map the snomed code to the high level group, ourselves, with the aid of ....
+
+Having done this, we then looked at the variability in these conditions over time. This led us to several changes to tie together discontinued and newly appearing codes, or merge categories. Details:
+
+In Level 3: recoded the discontinued "referral to service" label as NA and recoded discontinued urinary tract infection as urinary tract infectious disease.
+
+Drug and alc Level 1 to substance misuse in Level 2
+
+Pain in lower limb and pain in upper limb from Level 2 converted to Musculoskeletal conditions in Level 1.
+
+We were left with 60 conditions that were about as consitent over time as we were going to get. see fig x
+
+::: panel-tabset
+## Diagnosis tier 3 (most precise)
+
+```{r}
+#| label: fig-diag-ts-l3
+#| echo: false
+#| message: false
+#| warning: false
+#| fig-cap: "<br><br>"
+#| column: page
+#| fig-width: 12
+#| fig-asp: 0.618
+#| out-width: "85%"
+
+df_preplot_condition_over_time <- readRDS(here("data", "251204_dfq_condition_over_time.rds"))
+
+df_preplot_condition_over_time$data[[1]] |> 
+  plot_condition_over_time()
+
+```
+
+## Diagnosis tier 2
+
+```{r}
+#| label: fig-diag-ts-l2
+#| echo: false
+#| message: false
+#| warning: false
+#| fig-cap: "<br><br>"
+#| column: page
+#| fig-width: 12
+#| fig-asp: 0.618
+#| out-width: "85%"
+
+
+df_preplot_condition_over_time$data[[2]] |> 
+  plot_condition_over_time()
+
+```
+
+## Diagnosis tier 1 (most general)
+
+```{r}
+
+#| label: fig-diag-ts-l1
+#| echo: false
+#| message: false
+#| warning: false
+#| fig-cap: "<br><br>"
+#| column: page
+#| fig-width: 12
+#| fig-asp: 0.618
+#| out-width: "85%"
+
+
+df_preplot_condition_over_time$data[[3]] |> 
+  plot_condition_over_time()
+
+```
+:::
+
+```{r}
+#| label: fig-diag-ts
+#| echo: false
+#| message: false
+#| warning: false
+#| fig-cap: "<br><br>"
+#| column: page
+#| fig-width: 12
+#| fig-asp: 0.618
+#| out-width: "85%"
+```
+
+### Acuity
+
+Issues in coding consistency over time.
+
+::: panel-tabset
+## Separate
+
+```{r}
+#| label: fig-acuity-ts-sep
+#| echo: false
+#| message: false
+#| warning: false
+#| fig-cap: "<br><br>"
+#| column: page
+#| fig-width: 12
+#| fig-asp: 0.618
+#| out-width: "85%"
+
+
+readRDS(here("data", "251204_dfq_acuity_over_time.rds")) |> 
+  #
+  mutate(acuity = as.character(acuity)) |> 
+  mutate(acuity = case_when(
+    site_name == "Great Western Hospital A&E" &
+      acuity %in% c("Standard", "Urgent", "Non-urgent") ~ "NonUrg/Std/Urg",
+    site_name == "Worthing Hospital" &
+      acuity %in% c("Standard", "Non-urgent") ~ "NonUrg/Std",
+    site_name == "Leicester Royal Infirmary" &
+      acuity %in% c("Standard", "Urgent") ~ "Std/Urg",
+    T ~ acuity
+  )) |> 
+  #
+  count(site_name, year_quarter, acuity, wt = n) |> 
+  group_by(site_name, year_quarter) |> 
+  mutate(p = n/sum(n)) |> 
+  ungroup() |> 
+  ggplot(aes(year_quarter, p, col = acuity, group = acuity))+
+  geom_line()+
+  geom_point(size = .9)+
+  geom_blank(aes(y=0))+
+  facet_wrap(vars(site_name), scales = "free_y")+
+  theme_minimal()+
+  theme(
+    legend.position = "top",
+    legend.text = element_text(size = 10),
+    legend.title = element_text(size = 10),
+    axis.text = element_text(size = 6),
+    axis.title = element_blank(),
+    strip.text = element_text(size = 8),
+  )+
+  guides(colour = guide_legend(nrow = 1))
+
+```
+
+## Merged
+
+```{r}
+#| label: fig-acuity-ts-merged
+#| echo: false
+#| message: false
+#| warning: false
+#| fig-cap: "<br><br>"
+#| column: page
+#| fig-width: 12
+#| fig-asp: 0.618
+#| out-width: "85%"
+
+
+readRDS(here("data", "251204_dfq_acuity_over_time.rds")) |> 
+  count(site_name, year_quarter, acui3, wt = n) |> 
+  group_by(site_name, year_quarter) |> 
+  mutate(p = n/sum(n)) |> 
+  ungroup() |> 
+  ggplot(aes(year_quarter, p, col = acui3, group = acui3))+
+  geom_line()+
+  geom_point(size = .6)+
+  geom_blank(aes(y=0))+
+  facet_wrap(vars(site_name), scales = "free_y")+
+  theme_minimal()+
+  theme(
+    legend.position = "top",
+    legend.text = element_text(size = 10),
+    legend.title = element_text(size = 10),
+    axis.text = element_text(size = 6),
+    axis.title = element_blank(),
+    strip.text = element_text(size = 8),
+  )+
+  guides(colour = guide_legend(nrow = 1))
+
+```
+:::
+
+Otherwise, same processing as for site-level report.
+
+## Model specification
+
+We fitted a logistic generalised additive model (logistic GAM) to the processed data. We included variables to adjust for casemix (as far as possible), namely: *age* (as a spline-based smooth) interacting with *sex*; *acuity*; whether the patient arrived by ambulance or not; and the *referral source*. We incorporated variables to account for the ethnicity and socioeconomic status of patients.[^1]^,^ [^2] In addition, we included time-related variables to control for weekday or weekend attendances, and whether the attendance was during the night (8 pm to 8 am).
+
+[^1]: The ethnicity variable contained 18 categories which broadly corresponded to the [high-level groups used by the ONS in the 2021 census](https://www.ethnicity-facts-figures.service.gov.uk/style-guide/ethnic-groups/).
+
+[^2]: The Index of Multiple Deprivation quintile covering the area in which a patient lived was used a proxy for socioeconomic status.
+
+We intentionally omitted contextual factors such as the level of crowding and the inpatient occupancy at the time a patient was treated. Instead, we wanted to leave these factors as possible explanations for any changes seen in admission thresholds. If we were to adjust for such effects they would not (in theory) be visible in the time series.
+
+## Reproducibility
+
+The computer code used in this analysis can be found a [GitHub repository](https://github.com/The-Strategy-Unit/tracking_adm_thresholds) (permissions currently required).
+
+# Results
+
+Sub-sample: 1 million records.
+
+ROC AUC = 0.853
+
+Brier score = 0.138
+
+```{r}
+#| label: fig-odds-quarter
+#| echo: false
+#| message: false
+#| warning: false
+#| fig-cap: "<br><br>"
+#| column: page
+#| fig-width: 12
+#| fig-asp: 0.618
+#| out-width: "85%"
+
+readRDS(here("data", "251204_dfq_coeff_II.rds")) |>
+  filter(str_detect(term, "year")) |>
+  mutate(term = str_remove(term, "year_quarter")) |>
+  mutate(row = row_number()) |>
+  ggplot() +
+  geom_hline(yintercept = 1, lty = "dashed", colour = "grey20", alpha = 0.5) +
+  geom_pointrange(aes(term, odds, ymin = lci, ymax = uci), col = "grey40", stroke = NA) +
+  # geom_smooth(aes(row, odds), se = F)+
+  theme_minimal() +
+  # coord_flip() +
+  scale_y_log10(
+    # limits = c(0.85, 1.15),
+    # breaks = c(0.9, 1, 1.1),
+    # labels = c(
+    #   # "Half\nas likely in\n2023/24",
+    #   # "Equally\nas likely in\n2023/24",
+    #   # "2x\nas likely in\n2023/24",
+    #   "90%\nas likely as\nav. occupancy",
+    #   "Equally\nas likely as\nav. occupancy",
+    #   "110%x\nas likely as\nav. occupancy"
+    # )
+  ) +
+  scale_x_discrete(
+    # breaks = seq(1, 23, 2)
+    # labels = 
+  )+
+  theme(
+    # axis.title.y = element_blank(),
+    axis.text = element_text(size = 7),
+    axis.title.y = element_text(size = 9),
+    axis.title.x = element_blank(),
+    # plot.margin = margin(5, 20, 5, 5),
+    # panel.grid.minor = element_blank(),
+  ) +
+  labs(
+    y = "Case-mix-adjusted odds of admission (log scale)\nReference category: 2025 Q4\n"
+  ) 
+
+
+
+
+
+```
+
+For context: Diagnosis.
+
+```{r}
+#| label: fig-odds-diacuity
+#| echo: false
+#| message: false
+#| warning: false
+#| fig-cap: "<br><br>"
+#| column: page
+#| fig-height: 15
+#| fig-asp: 1.618
+##| out-width: "100%"
+# #| fig-width: 12
+
+
+readRDS(here("data", "251204_dfq_coeff_II.rds")) |>
+  filter(str_detect(term, "iag|acu")) |>
+  mutate(grp = str_sub(term, 1, 3)) |> 
+  # count(grp)
+  # filter(str_detect(term, "diag")) |>
+  # filter(str_detect(term, "walk"))
+  # arrange(desc(odds)) |>
+  # slice_sample(n = 30) |>
+  ggplot() +
+  geom_hline(yintercept = 1, lty = "dashed", colour = "grey20", alpha = 0.5) +
+  geom_pointrange(aes(reorder(term, odds), odds, ymin = lci, ymax = uci, col = grp),  stroke = NA) +
+  theme_minimal() +
+  coord_flip() +
+  scale_y_log10() +
+  theme(
+     axis.title.x = element_text(size = 9),
+    axis.title.y = element_blank(),
+    legend.position = "none"
+  ) +
+  labs(
+    y = "\nCase-mix-adjusted odds of admission (log scale)"
+  )+
+  facet_wrap(vars(grp), scales = "free_y", ncol = 1)
+
+
+```
+
+```{r}
+#| label: fig-odds-other
+#| echo: false
+#| message: false
+#| warning: false
+#| fig-cap: "<br><br>"
+#| column: page
+#| fig-height: 15
+#| fig-asp: 1.618
+##| out-width: "100%"
+# #| fig-width: 12
+
+
+readRDS(here("data", "251204_dfq_coeff_II.rds")) |>
+  filter(!str_detect(term, "year|Interce|iag|acu")) |>
+  mutate(grp = str_sub(term, 1, 3)) |> 
+  # count(grp)
+  # filter(str_detect(term, "diag")) |>
+  # filter(str_detect(term, "walk"))
+  # arrange(desc(odds)) |>
+  # slice_sample(n = 30) |>
+  ggplot() +
+  geom_hline(yintercept = 1, lty = "dashed", colour = "grey20", alpha = 0.5) +
+  geom_pointrange(aes(reorder(term, odds), odds, ymin = lci, ymax = uci, col = grp),  stroke = NA) +
+  theme_minimal() +
+  coord_flip() +
+  scale_y_log10() +
+  theme(
+     axis.title.x = element_text(size = 9),
+    axis.title.y = element_blank(),
+    legend.position = "none"
+  ) +
+  labs(
+    y = "\nCase-mix-adjusted odds of admission (log scale)"
+  )+
+  facet_wrap(vars(grp), scales = "free_y", ncol = 1)
+
+
+```
+
+# To Address:
+
+1.  Note that 2023 Q1 might be odd due to NA diagnosis spike.
+
+2.  Option to exclude great western based on erratic acuity? (or put some kind of flag in to account for this)
+
+3.  Patient walked out - diagnosis?
