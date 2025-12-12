@@ -2,7 +2,8 @@
 # Exclude sites if there are dramatic changes in the outcome variable
 # (here approximated with crude admission rates) over time.
 
-df_sample_consistent |> saveRDS(here("data", "251204_df_sample_consistent.rds"))
+
+df_sample_consistent <- readRDS(here("data", "251204_df_sample_consistent.rds"))
 
 df_ecds_II_sample <- df_ecds_II |> 
   # filter(!der_provider_code %in% c("RJE")) |>  

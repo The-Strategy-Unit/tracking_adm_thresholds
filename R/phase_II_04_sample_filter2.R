@@ -32,19 +32,7 @@ gc()
 #   )
 # 
 df_ecds_II <- arrow::open_dataset(here::here("data_raw", "251128_ecds_II.gzip.parquet")) |>
-  collect()
-
-gc()
-gc()
-gc()
-gc()
-gc()
-
-
-# -------------------------------------------------------------------------
-
-
-df_ecds_II <- df_ecds_II |> 
+  collect() |> 
   mutate(admitted = case_when(
     # # THESE WILL TRUMP EVERYTHING ELSE (BUT MINIMAL EFFECT FOR OUR SAMPLE): 
     ec_discharge_status_snomed_ct == "1077081000000104" ~ 0, # SDEC
@@ -64,6 +52,16 @@ df_ecds_II <- df_ecds_II |>
     is.na(ref_disdest) ~ 0,
     TRUE ~ 0
   ))
+
+gc()
+gc()
+gc()
+gc()
+gc()
+
+
+# -------------------------------------------------------------------------
+
 
 # PLOT OF GENERAL CODING OVER TIME ------------------------------------------------
 # SOME PRE AND POST 2022 DIAGNOSIS CODES NEED TO BE TIED TOGETHER
@@ -175,7 +173,7 @@ filter(gradient < 0.00008) |>
 filter(der_provider_site_code != "RTF86") |> 
 select(der_provider_site_code) 
 
-df_sample_consistent |> saveRDS(here("data", "251204_df_sample_consistent.rds"))
+# df_sample_consistent |> saveRDS(here("data", "251204_df_sample_consistent.rds"))
 
 # RA701
 # RXPCP
