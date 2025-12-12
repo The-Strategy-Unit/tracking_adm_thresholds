@@ -81,37 +81,31 @@ plot_condition_over_time <- function(df) {
 
 ## Data source
 
-This work relied on data from the Emergency Care Data Set (ECDS). Each ECDS record represents a patient attendance at an urgent or emergency care department. We selected the subset of records that were coded as unplanned attendances at Type 1 emergency departments, with an arrival date between 1st April 2019 and 31st March 2025 (inclusive).
+This analysis relied on data from the Emergency Care Data Set (ECDS). Each ECDS record represents a patient attendance at an urgent or emergency care department. We selected the subset of records coded as unplanned attendances at Type 1 emergency departments (EDs), with an arrival date between 1st April 2019 and 31st March 2025 (inclusive).
 
-We excluded records where the patient left the ED before treatment was provided; where the patient died during an attendance; and where the individual was found to be dead on arrival at the ED.
+We removed records where the patient left the ED before treatment was provided; where the patient died during an attendance; and where the individual was found to be dead on arrival at the ED.
 
 ## Data quality and use of sampling
 
-Whilst the ECDS is recognised as a high-quality data source, there is yet considerable variation in data quality, both across provider sites and over time.
+Whilst the ECDS is recognised as a high-quality data source, there is yet considerable variation in data quality, both across provider sites and over time. If overlooked, this variation could adversely affect the validity of our results.
 
-Looking at data over a 7 year period - changes to codes, variation in coding practices over time and by provider.
+We were particularly concerned, here, about the completeness and consistency of variables that indicate the clinical features and severity of a patient's condition. These fields - *diagnosis*, *chief complaint*, and *acuity* - are likely to be the strongest predictors of admission and therefore have the greatest influence on our results. If we were to use a dataset with sizeable inconsistency in the coding of these fields (non-constant risks) over time, this could distort - and invalidate - our results. To increase the chances that our findings would be valid, we conducted the analysis on records from a sample of sites whose data met our quality requirements.[^1]
 
-To increase the chances that our findings would be valid and reliable, we conducted the analysis on data from a sample of providers. This sample was non-random: we included a provider in the sample if the quality of their data submissions met our requirements.
+[^1]: This sample was therefore non-random.
 
-Whilst sampling should improve the reliability and validity of our results, we can only make general statements about the association between testing thresholds and bed occupancy if our sample of providers is *representative* of the population of providers. That is to say that, on aggregate, the providers in our sample should have similar characteristics to those in our population.
+Whilst sampling should improve the validity of our results, we can only make *general statements* about changes in admission thresholds over time if our sample of sites - and the patients attending these - is *representative* of EDs nationwide. In other words, on aggregate, the sites and patients covered by our sample should have similar characteristics to those across England.
 
-There is a trade-off to be made here. The larger our sample of providers, the more likely it is to be representative of the population of providers. However, the larger we make our sample, the more we compromise on data quality, which will likely decrease the reliability of our results.
+There is a trade-off to be made, however. The larger our sample of sites, the more likely it is to be representative of the population of sites, and the more likely it will be that our findings are generalisable. However, the larger we make our sample, the more we compromise on data quality, which will likely decrease the validity of our results.
 
-Details of our approach to this trade-off, as well as our data quality criteria, sampling methods, and the measures of representation, can be found in
+Details of our approach to this trade-off, as well as our data quality criteria, sampling methods, and the measures of representation, can be found below.
 
-### Sampling
+#### Sample criteria
 
-Explain: Primarily seeking to minimise the non-constant risk of diagnosis and acuity over time.
+We identified 138 sites that submitted data to ECDS throughout the study period (2019/20 to 2024/25) and that had a consistent site code. These 138 EDs will represent the total population of providers that we might have used in this analysis had data quality been universally high.
 
-#### Broad requirements
+As explained above, we viewed the completeness and consistency across *diagnosis*, *acuity*, and *chief complaint* fields as being particularly important to this study. From the population of 138 sites, only 20 had completeness rates for these variables that exceeded 75% in every quarter of the period studied.
 
-Sites' completion of each of di**agnosis, acuity, and chief complaint fields** **must exceed 75%** for every quarter over the period studied. (Left us with 20 sites from a qualifying population of 138 sites).
-
-Sites in "the population" had to have existed throughout the period of study without a change in site code.
-
-#### Further eliminations - based on variability
-
-Within these bounds, the variation in diagnosis completion rates must not exceed a certain level. We excluded a further 3 sites where the average increase completion rates over the period of study was greater than 3% per year. We excluded one further site which showed two large step changes in rates of diagnosis completion.
+To ensure yet greater consistency, we excluded a further 3 sites (of the selection of 20) where the completion rate of diagnosis decreased, on average, by more than 3% per year. And we excluded one further site that showed two sizeable step changes in the completion of the diagnosis field. This left us with a working sample of 16 sites.
 
 <br>
 
@@ -155,7 +149,7 @@ readRDS(here("data", "251204_qdf_diag_consistency.rds")) |>
 
 #### Continuity of outcome variable
 
-Finally, we checked that our intended outcome variable (admitted or not) was complete throughout the study period for each site in our working sample. We also established that changes in the crude rate of admission did not exceed +/-10% from any one quarter to the next, which might be indicative of a data quality issue.
+Finally, it was necessary to verify that our intended outcome variable (whether the patient was admitted or not) was complete throughout the study period, for each site in our working sample. At the same time, we established that any change in the crude rate of admission, by site, did not exceed +/-10% from any one quarter to the next. This might have been indicative of a data quality issue.
 
 ```{r}
 #| label: fig-admitted-completion
@@ -189,11 +183,13 @@ readRDS(here("data", "251204_dfq_outcome_ts.rds")) |>
 
 ```
 
-### Sample sites and representation
+### Sites in the sample
 
-The sites meeting the data quality criteria we set are named in table X. Table y shows how the characteristics of EDs in our sample compare to the characteristics of EDs nationally.
+The 16 EDs meeting the data quality criteria above are named in table X. Data from these sites, which captures more than 7 million attendances over 6 years, will be used in the following analysis. Table y shows how the characteristics of EDs in the sample compare to the characteristics of EDs nationally.
 
-The patient casemix is broadly representative of those who attended EDs in the period. The sample of providers is slightly skewed.   
+The sample of EDs is slightly skewed towards smaller sites, and there is no representation of sites in London or North West England. However, the casemix of patients attending the EDs in our sample was broadly representative of the casemix of all patients who attended EDs over the period.
+
+When we relaxed the completeness threshold for our key variables from 75% to 70%, we saw no improvement in representation. If we were to continue to lower the threshold, in search of greater representation, we may affect the validity of our results.
 
 ::: panel-tabset
 ## Sites in sample
@@ -256,11 +252,11 @@ readRDS(here("data", "251204_table_representation.rds")) |>
   #            replacement = "") |> 
   tab_row_group(
     label = "Patient demographics:",
-    rows =  str_detect(variable, "age|depriv|region_")
+    rows =  str_detect(variable, "depriv|region_")
   ) |> 
   tab_row_group(
     label = "Case-mix-related:",
-    rows =  str_detect(variable, "arrive_|admitted")
+    rows =  str_detect(variable, "age|arrive_|admitted")
   ) |> 
   tab_row_group(
     label = "Provider-related (23/24):",
@@ -287,30 +283,41 @@ readRDS(here("data", "251204_table_representation.rds")) |>
 
 ## Data processing
 
-A variable to indicate the condition of the patient which, along with acuity, will be the most powerful predictor of admission.
+#### **Addressing incompleteness**
 
-Notes on diagnosis from phase I.
+On average, XX% of records in our sample had missing values in *at least one* of the fields we had selected for our model. Since our intended logistic regression model would not accept missing values, we had the choice to either: 1) exclude records with missing values; 2) impute missing values; or 3) assign missing values to an explicit missing category.[^2]
 
-### Diagnosis
+[^2]: This was only possible as the variables with missing values were exclusively categorical.
 
-A variable that captures the clinical features of a patient's condition. disease or problem. or other factors influencing 
+We opted for the third approach, which allowed us to make use all the records in our study dataset without the need to employ an additional (and potentially complex) imputation algorithm. This approach also allows the model to make use of the missingness signals. Importantly here, we haven’t made the assumption that data were missing at random. We believed, instead, that the missingness was more likely to be due to failures of systems and processes.[^3]
 
+[^3]: If, however, the missingness was random, there is a risk that models we build could incorporate a false signal. This signal would compete with other variables for explanatory power, which may ultimately distort the coefficients of interest.
 
-But changes in the codes used over the period of study meant that the ECDS refset was impractical due to the number of codes deprecated - a big group. Thus we used top 30 diagnosis codes by freq at level 3.
+#### Creating new variables
 
-having excluded the top 30 diagnoses codes, we then switched to chief complaint, and used the top 20 complaints.
+Further to the treatment of missing values, we chose to synthesise a variable that captured the clinical features of a patient's condition. The reasons for this were largely related to the fact that the *primary diagnosis* variable, unmodified, consisted of a large number of categories (9,800+), which would translate into a similarly large number of predictor variables. If we could substantially reduce the number of predictors whilst minimising the loss of information, we would be more likely to end up with a model that was more capable of distinguishing between genuine effect and random variation.
 
-With the remaining codes we mapped complaint to the ECDS refset hierachy. Whilst there were around 40 instances, we were able to map the snomed code to the high level group, ourselves, with the aid of ....
+To produce this new variable we used information from the diagnosis and chief complaint variables, together with the 3-tier hierarchy from the “ECDS Refset MAX specification”, created by NHSE.
 
-Having done this, we then looked at the variability in these conditions over time. This led us to several changes to tie together discontinued and newly appearing codes, or merge categories. Details:
+We first created a frequency table of primary diagnoses in our sample, and noted the 30 most frequent SNOMED codes for use in our new variable. To this list, we added two SNOMED diagnosis codes related to acute COVID-19 infection.[^4]
 
-In Level 3: recoded the discontinued "referral to service" label as NA and recoded discontinued urinary tract infection as urinary tract infectious disease.
+[^4]: These two codes are mapped to one condition (COVID-19).
 
-Drug and alc Level 1 to substance misuse in Level 2
+Having removed activity with these diagnosis codes from our sample, we then identified the 20 most frequent chief complaint codes and noted these.
 
-Pain in lower limb and pain in upper limb from Level 2 converted to Musculoskeletal conditions in Level 1.
+We mapped the remaining chief complaint codes to the ECDS Refset diagnosis table, and grouped conditions at the highest (most general) level. Whilst there were 36 instances where the SNOMED code was labelled as “deprecated” when mapped to the Refset, we were able to categorize these manually with the aid of archived material.
 
-We were left with 60 conditions that were about as consitent over time as we were going to get. see fig x
+We therefore captured the condition (where given) of all patients in the sample, at various levels of detail, in 66 categories. On examining the trends for these 66 categories, we saw evidence of codes being re-classified or dropped entirely. We attempted to reconcile these discontinuities, by:
+
+-   Uniting different codes for urinary tract infections
+
+-   Uniting different codes for injuries of the upper, and lower, extremities
+
+-   Moving lower limb pain and upper limb pain from Level 2 to musculoskeletal conditions in Level 1.
+
+-   Moving drug and alcohol abuse from Level 1 into substance misuse in Level 2.
+
+These changes left us with 62 categories indicating the clinical features of a patient’s condition. The 62 categories, and their timeseries, can be seen in @fig-diag-ts-l3, @fig-diag-ts-l2, and @fig-diag-ts-l1. The proportion of attendances covered by each tier is shown in ....
 
 ::: panel-tabset
 ## Diagnosis tier 3 (most precise)
@@ -326,7 +333,7 @@ We were left with 60 conditions that were about as consitent over time as we wer
 #| fig-asp: 0.618
 #| out-width: "85%"
 
-df_preplot_condition_over_time <- readRDS(here("data", "251204_dfq_condition_over_time.rds"))
+df_preplot_condition_over_time <- readRDS(here("data", "251211_dfq_condition_over_time.rds"))
 
 df_preplot_condition_over_time$data[[1]] |> 
   plot_condition_over_time()
@@ -374,7 +381,7 @@ df_preplot_condition_over_time$data[[3]] |>
 :::
 
 ```{r}
-#| label: fig-diag-ts
+#| label: tbl-diag-propos
 #| echo: false
 #| message: false
 #| warning: false
@@ -383,11 +390,17 @@ df_preplot_condition_over_time$data[[3]] |>
 #| fig-width: 12
 #| fig-asp: 0.618
 #| out-width: "85%"
+
+df_preplot_condition_over_time |> 
+  select(level, p) |> 
+  gt() |> 
+
+
 ```
 
-### Acuity
+Moving on to other variables, we created unique levels of the acuity variable – merging two or more of the original levels – for 3 EDs, since, for these sites, we observed erratic variation in the acuity levels over time.
 
-Issues in coding consistency over time.
+We created a new *referral source* variable consisting of six levels, which combined categories from the *attendance source* field. Finally, we created 3 new binary variables indicating 1) whether the patient arrived at ED by ambulance (of any type); 2) whether the patient arrived at outside daytime hours (or 8pm - 8am); and 3) whether the patient arrived at a weekend.
 
 ::: panel-tabset
 ## Separate
@@ -425,7 +438,8 @@ readRDS(here("data", "251204_dfq_acuity_over_time.rds")) |>
   geom_line()+
   geom_point(size = .9)+
   geom_blank(aes(y=0))+
-  facet_wrap(vars(site_name), scales = "free_y")+
+  #facet_wrap(vars(site_name), scales = "free_y")+
+  facet_wrap(vars(site_name))+
   theme_minimal()+
   theme(
     legend.position = "top",
@@ -477,17 +491,19 @@ readRDS(here("data", "251204_dfq_acuity_over_time.rds")) |>
 ```
 :::
 
-Otherwise, same processing as for site-level report.
-
 ## Model specification
 
-We fitted a logistic generalised additive model (logistic GAM) to the processed data. We included variables to adjust for casemix (as far as possible), namely: *age* (as a spline-based smooth) interacting with *sex*; *acuity*; whether the patient arrived by ambulance or not; and the *referral source*. We incorporated variables to account for the ethnicity and socioeconomic status of patients.[^1]^,^ [^2] In addition, we included time-related variables to control for weekday or weekend attendances, and whether the attendance was during the night (8 pm to 8 am).
+We fitted a logistic generalised additive model (logistic GAM) to the processed data, with our binary outcome variable being whether the patient was admitted or not. Our variable of interest was the quarter of the financial year that a patient attended. We also included variables to adjust for casemix (as far as possible), namely: *age* (as a spline-based smooth) interacting with *sex*; *acuity*; the new, grouped primary diagnosis variable; whether the patient arrived by ambulance or not; and the *referral source*. We incorporated variables to account for the ethnicity and socioeconomic status of patients.[^5]^,^ [^6] In addition, we included time-related variables to control for weekday or weekend attendances, and whether the attendance was during the night (8 pm to 8 am).
 
-[^1]: The ethnicity variable contained 18 categories which broadly corresponded to the [high-level groups used by the ONS in the 2021 census](https://www.ethnicity-facts-figures.service.gov.uk/style-guide/ethnic-groups/).
+[^5]: The ethnicity variable contained 18 categories which broadly corresponded to the [high-level groups used by the ONS in the 2021 census](https://www.ethnicity-facts-figures.service.gov.uk/style-guide/ethnic-groups/).
 
-[^2]: The Index of Multiple Deprivation quintile covering the area in which a patient lived was used a proxy for socioeconomic status.
+[^6]: The Index of Multiple Deprivation quintile covering the area in which a patient lived was used a proxy for socioeconomic status.
 
-We intentionally omitted contextual factors such as the level of crowding and the inpatient occupancy at the time a patient was treated. Instead, we wanted to leave these factors as possible explanations for any changes seen in admission thresholds. If we were to adjust for such effects they would not (in theory) be visible in the time series.
+The ED site was the final variable in the model. As graphical evidence indicated that different sites might interpret a patient's acuity level in different ways (and the acuity variable would likely be highly influential), we included an interaction between ED site and acuity.
+
+We intentionally omitted contextual factors such as the level of crowding and the inpatient occupancy at the time a patient was treated. Whilst these variables are challenging to engineer for an extended time period, we also wanted to leave these factors as possible explanations for any changes seen in admission thresholds **(less relevant excuse for quarterly data??)**. If we were to adjust for such effects they would not (in theory) be visible in the time series.
+
+We fitted the model to a random sub-sample of X million records.
 
 ## Reproducibility
 
@@ -495,11 +511,15 @@ The computer code used in this analysis can be found a [GitHub repository](https
 
 # Results
 
-Sub-sample: 1 million records.
+The aim of this analysis was to describe national-level changes in threshold for hospital admission via ED. We therefore used a statistical model to estimate the casemix-adjusted odds of admission over time. The model coefficients corresponding to the each quarter of every financial year give us these odds, and we show these coefficients in Fig X.
 
-ROC AUC = 0.853
+Note confidence intervals - HOW TO INTERPRET which may change.
 
-Brier score = 0.138
+The results can dotted line represents odds are equal to those of Q1 of 2019/20. We might divide the time period into three parts: the pre-pandemic period; the pandemic period; and the post-pandemic period. The first point to note is that these estimates generally suggest that the odds of admission during the pandemic period were 10-15% higher than in the other periods.
+
+The odds of admission pre- and post-pandemic are similar (to be interpreted with full model).
+
+Values of the other (parametric) model coefficients, and the model perfomance statistics, are given in Appendix X
 
 ```{r}
 #| label: fig-odds-quarter
@@ -512,7 +532,11 @@ Brier score = 0.138
 #| fig-asp: 0.618
 #| out-width: "85%"
 
-readRDS(here("data", "251204_dfq_coeff_II.rds")) |>
+# readRDS(here("data", "251204_dfq_coeff_II.rds")) |>
+# readRDS(here("data", "2512xx_dfq_coeff_II.rds")) |>
+#readRDS(here("data", "251208_dfq_coeff_II.rds")) |>
+#readRDS(here("data", "2512yy_dfq_coeff_II.rds")) |>
+readRDS(here("data", "251211_dfq_coeff_II.rds")) |>
   filter(str_detect(term, "year")) |>
   mutate(term = str_remove(term, "year_quarter")) |>
   mutate(row = row_number()) |>
@@ -523,7 +547,7 @@ readRDS(here("data", "251204_dfq_coeff_II.rds")) |>
   theme_minimal() +
   # coord_flip() +
   scale_y_log10(
-    # limits = c(0.85, 1.15),
+    limits = c(0.87, 1.24)
     # breaks = c(0.9, 1, 1.1),
     # labels = c(
     #   # "Half\nas likely in\n2023/24",
@@ -549,10 +573,6 @@ readRDS(here("data", "251204_dfq_coeff_II.rds")) |>
   labs(
     y = "Case-mix-adjusted odds of admission (log scale)\nReference category: 2025 Q4\n"
   ) 
-
-
-
-
 
 ```
 
@@ -598,6 +618,18 @@ readRDS(here("data", "251204_dfq_coeff_II.rds")) |>
 
 ```
 
+# Discussion
+
+Text here
+
+# Appendix
+
+#### Performance measures
+
+The fitted model scored an AUROC of 0.866 and a Brier Score of 0.132. Performance measures were calculated out of (sub-) sample data, which should improve the robustness of these statistics.
+
+#### Additional model coefficients
+
 ```{r}
 #| label: fig-odds-other
 #| echo: false
@@ -637,11 +669,3 @@ readRDS(here("data", "251204_dfq_coeff_II.rds")) |>
 
 
 ```
-
-# To Address:
-
-1.  Note that 2023 Q1 might be odd due to NA diagnosis spike.
-
-2.  Option to exclude great western based on erratic acuity? (or put some kind of flag in to account for this)
-
-3.  Patient walked out - diagnosis?
