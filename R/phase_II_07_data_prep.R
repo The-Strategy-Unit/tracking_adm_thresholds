@@ -28,6 +28,16 @@ df_diag_added <- bind_rows(
 df_var_engineering <- df_diag_added |> 
   mutate(acuity = str_remove_all(ref_acuity, " level emergency care")) |>
   mutate(acuity = if_else(is.na(acuity), "NA", acuity)) |>
+  # MERGE LEVELS FOR SOME SITES TO SMOOTH ODD PATTERNS IN ACUITY OVER TIME:
+  mutate(acuity = case_when(
+    site_name == "Great Western Hospital A&E" &
+      acuity %in% c("Standard", "Urgent", "Non-urgent") ~ "NonUrg/Std/Urg",
+    site_name == "Worthing Hospital" &
+      acuity %in% c("Standard", "Non-urgent") ~ "NonUrg/Std",
+    site_name == "Leicester Royal Infirmary" &
+      acuity %in% c("Standard", "Urgent") ~ "Std/Urg",
+    T ~ acuity
+  )) |> 
   mutate(referral_source = case_when(
     ref_attsrc %in% c("Referred by self", "Self-referral to accident and emergency department") ~ "self",
     ref_attsrc == "Referred by ambulance service" ~ "ambulance",
@@ -97,8 +107,8 @@ df_var_ref_levels <- df_var_engineering |>
   mutate(acuity = fct_relevel(acuity, "Standard")) |> 
   mutate(ethnic_grp_sus = fct_relevel(ethnic_grp_sus, "British, Mixed British")) |> 
   # mutate(referral_source = fct_relevel(referral_source, "self")) |> 
-  # SET REF CATEGORY FOR YEAR_MONTH (MOST RECENT QUARTER USED):
-  mutate(year_quarter = fct_relevel(year_quarter, as.character(yearquarter("2025-02-01", fiscal_start = 4)))) |>
+  # SET REF CATEGORY FOR YEAR_MONTH (FIRST QUARTER 2019/20):
+  mutate(year_quarter = fct_relevel(year_quarter, as.character(yearquarter("2019-05-01", fiscal_start = 4)))) |>
   identity()
 
 
@@ -109,51 +119,51 @@ gc()
 
 
 # * EDA: ACUITY OVER TIME ------------------------------------------------
-
-df_var_ref_levels |>
-  count(site_name, year_quarter, acuity == "NA") |> 
-  rename(x =3) |> 
-  filter(x == T) |> 
-  ggplot(aes(year_quarter, n))+
-  geom_line(group = 1)+
-  geom_point(size = .6)+
-  geom_blank(aes(y=0))+
-  facet_wrap(vars(site_name), scales = "free_y")+
-  theme_minimal()+
-  theme(
-    legend.position = "top",
-    axis.text = element_text(size = 5),
-    axis.title = element_blank(),
-    strip.text = element_text(size = 6),
-  )
-
-df_acuity_over_time <- df_var_ref_levels |>
-  mutate(acui2 = as.character(acuity)) |> 
-  mutate(acui2 = if_else(acuity %in% c("Standard", "Urgent"), "Standard/Urgent", acui2)) |> 
-  mutate(acui3 = if_else(acuity %in% c("Standard", "Urgent", "Non-urgent"), "Standard/Urgent/Non", acui2)) |> 
-  count(site_name, year_quarter, acuity, acui2, acui3) 
-  
-df_acuity_over_time |> saveRDS(here("data", "251204_dfq_acuity_over_time.rds"))
-
-  
-  # ggplot(aes(year_quarter, n, col = acuity, group = acuity))+
-  count(site_name, year_quarter, acui2) |> 
-  ggplot(aes(year_quarter, n, col = acui2, group = acui2))+
-  geom_line()+
-  geom_point(size = .6)+
-  geom_blank(aes(y=0))+
-  facet_wrap(vars(site_name), scales = "free_y")+
-  theme_minimal()+
-  theme(
-    legend.position = "top",
-    legend.text = element_text(size = 7),
-    legend.title = element_text(size = 7),
-    axis.text = element_text(size = 5),
-    axis.title = element_blank(),
-    strip.text = element_text(size = 6),
-  )+
-  guides(colour = guide_legend(nrow = 1))
-
-
+# 
+# df_var_ref_levels |>
+#   count(site_name, year_quarter, acuity == "NA") |> 
+#   rename(x =3) |> 
+#   filter(x == T) |> 
+#   ggplot(aes(year_quarter, n))+
+#   geom_line(group = 1)+
+#   geom_point(size = .6)+
+#   geom_blank(aes(y=0))+
+#   facet_wrap(vars(site_name), scales = "free_y")+
+#   theme_minimal()+
+#   theme(
+#     legend.position = "top",
+#     axis.text = element_text(size = 5),
+#     axis.title = element_blank(),
+#     strip.text = element_text(size = 6),
+#   )
+# 
+# df_acuity_over_time <- df_var_ref_levels |>
+#   mutate(acui2 = as.character(acuity)) |> 
+#   mutate(acui2 = if_else(acuity %in% c("Standard", "Urgent"), "Standard/Urgent", acui2)) |> 
+#   mutate(acui3 = if_else(acuity %in% c("Standard", "Urgent", "Non-urgent"), "Standard/Urgent/Non", acui2)) |> 
+#   count(site_name, year_quarter, acuity, acui2, acui3) 
+#   
+# df_acuity_over_time |> saveRDS(here("data", "251204_dfq_acuity_over_time.rds"))
+# 
+#   
+#   # ggplot(aes(year_quarter, n, col = acuity, group = acuity))+
+#   count(site_name, year_quarter, acui2) |> 
+#   ggplot(aes(year_quarter, n, col = acui2, group = acui2))+
+#   geom_line()+
+#   geom_point(size = .6)+
+#   geom_blank(aes(y=0))+
+#   facet_wrap(vars(site_name), scales = "free_y")+
+#   theme_minimal()+
+#   theme(
+#     legend.position = "top",
+#     legend.text = element_text(size = 7),
+#     legend.title = element_text(size = 7),
+#     axis.text = element_text(size = 5),
+#     axis.title = element_blank(),
+#     strip.text = element_text(size = 6),
+#   )+
+#   guides(colour = guide_legend(nrow = 1))
+# 
+# 
 
 
