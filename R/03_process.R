@@ -181,7 +181,7 @@ df_var_engineering_1of2 <- df_providers_nested_specs |>
         mutate(complaint = janitor::make_clean_names(complaint, allow_dupes = T)) |>
         mutate(complaint = str_c("l1_", complaint))
       
-      # NOT PROVIDER SPECIFIC:
+      # PROVIDER SPECIFIC:
       lkp_complaint <- bind_rows(
         tmp_complaint_l2,
         tmp_complaint_l1
