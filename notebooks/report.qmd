@@ -215,9 +215,9 @@ At a site level, on average, 72% of records had missing values in *at least one*
 
 [^3]: This was only possible as the variables with missing values were exclusively categorical.
 
-We opted for the third approach, which allowed us to make use all the records in our study dataset. This approach especially useful when fitting models for smaller sites, where the number of records (n) we have for that site may not greatly exceed the number of predictor variables (p) that we wish to include in our regression models. As p –\> n, we get closer to an over-fitted, under-powered model, which will be more likely to produce inaccurate predictions and be incapable of distinguishing between genuine effect and random variation.
+We opted for the third approach, which allowed us to make use all the records in our study dataset without the need to employ additional (and potentially complex) imputation algorithms. This approach especially useful when fitting models for smaller sites, where the number of records (n) we have for that site may not greatly exceed the number of predictor variables (p) that we wish to include in our regression models. As p –\> n, we get closer to an over-fitted, under-powered model, which will be more likely to produce inaccurate predictions and be incapable of distinguishing between genuine effect and random variation.
 
-The approach we used also allows the model to make use of the missingness signals. Here, we haven't made the assumption that data were missing at random. We believed it was more likely that there was some systematic reason for the missingness. If, however, missingness was random, there is a risk that models we build could incorporate a false signal. This signal would compete with other variables for explanatory power, which may ultimately distort the coefficients of interest.
+The approach we used also allows the model to make use of the missingness signals. Importantly here, we haven't made the assumption that data were missing at random. We believed, instead, that the missingness was more likely to be due to failures of systems and processes. If, however, the missingness was random, there is a risk that models we build could incorporate a false signal. This signal would compete with other variables for explanatory power, which may ultimately distort the coefficients of interest.
 
 ### Addressing non-constant risks
 
@@ -227,7 +227,9 @@ In order to highlight results that may have been affected by non-constant risks,
 
 ## Additional data processing
 
-Further to the treatment of missing values, we chose to re-engineer the *primary diagnosis* and *chief complaint* variables. Both of these variables, unmodified, consisted of a large number of categories (850+ for diagnosis and 180+ for complaint). As implied in @sec-incompleteness, if we can substantially reduce the number of predictors whilst minimising the loss of information, we are likely to improve our models. Therefore, in each case, we grouped together less frequent conditions with the aid of a [3-tier hierarchy (the ECDS "Refset", created by NHSE)](https://digital.nhs.uk/data-and-information/data-collections-and-data-sets/data-sets/emergency-care-data-set-ecds/ecds-guidance). We conducted this grouping at the site level. As a consequence, groupings may vary, slightly, from site to site.
+Further to the treatment of missing values, we created a new *referral source* variable consisting of six levels, which combined categories from the *attendance source* field. We created 3 new binary variables indicating 1) whether the patient arrived at ED by ambulance (of any type); 2) whether the patient arrived at outside daytime hours (or 8pm - 8am); and 3) whether the patient arrived at a weekend.
+
+Importantly, we chose to re-engineer the *primary diagnosis* and *chief complaint* variables. Both of these variables, unmodified, consisted of a large number of categories (850+ for diagnosis and 180+ for complaint). As implied in @sec-incompleteness, if we can substantially reduce the number of predictors whilst minimising the loss of information, we are likely to improve our models. Therefore, for both *primary diagnosis* and *chief complaint*, we grouped together less frequent conditions with the aid of a [3-tier hierarchy (the "ECDS Refset", created by NHSE)](https://digital.nhs.uk/data-and-information/data-collections-and-data-sets/data-sets/emergency-care-data-set-ecds/ecds-guidance). We conducted this grouping at the site level. As a consequence, groupings may vary, slightly, from site to site.
 
 #### Diagnosis grouping
 
@@ -395,11 +397,15 @@ There were 13 sites that met these criteria. In these cases, we used chief compl
 
 ### Primary models
 
-We fitted a separate logistic generalised additive model (logistic GAM) for each site. As noted above, we worked with two specifications, identical other than in their use of either the re-engineered *diagnosis* or *complaint* variable.
+We fitted a separate logistic generalised additive model (logistic GAM) for each site.
+
+Our outcome variable was whether the patient was admitted, or not. Our variable of interest was the week that a patient attended.
+
+As noted above, we worked with two specifications, identical other than in their use of either the re-engineered *diagnosis* or *complaint* variable.
 
 Otherwise, we included variables to adjust for casemix (as far as possible), namely: *age* (as a spline-based smooth) interacting with *sex*; *acuity*; whether the patient arrived by ambulance or not; and the *referral source*. We incorporated variables to account for the ethnicity and socioeconomic status of patients.[^7]^,^ [^8] In addition, we included time-related variables to control for weekday or weekend attendances, and whether the attendance was during the night (8 pm to 8 am).
 
-[^7]:  The ethnicity variable contained 18 categories which broadly corresponded to the [high-level groups used by the ONS in the 2021 census](https://www.ethnicity-facts-figures.service.gov.uk/style-guide/ethnic-groups/).
+[^7]: The ethnicity variable contained 18 categories which broadly corresponded to the [high-level groups used by the ONS in the 2021 census](https://www.ethnicity-facts-figures.service.gov.uk/style-guide/ethnic-groups/).
 
 [^8]: The Index of Multiple Deprivation quintile covering the area in which a patient lived was used a proxy for socioeconomic status.
 
