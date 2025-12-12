@@ -2,36 +2,61 @@
 # Get model stats and results.
 
 mod_run_1 <- readRDS(here::here("data", "251203_mod_run_1.rds"))
+mod_run_2 <- readRDS(here::here("data", "251205_mod_run_2_acuity.rds"))
+mod_run_3 <- readRDS(here::here("data", "251205_mod_run_3_sans_acuity.rds"))
+mod_run_4 <- readRDS(here::here("data", "251208_mod_run_4_covid.rds"))
+mod_run_5 <- readRDS(here::here("data", "251208_mod_run_5_interaction.rds"))
+mod_run_7 <- readRDS(here::here("data", "251211_mod_run_7_interaction.rds"))
 
 
 # STATS -------------------------------------------------------------------
+# head(fitted(mod_run_5))
+head(mod_5_resample)
+
+# TEST ON OUT OF SAMPLE RECORDS:
+set.seed(1994)
+newdata <- df_var_ref_levels |> 
+  slice_sample(n = 1e6)
+
+mod_5_resample <- predict(mod_run_5, newdata, type ="response")
+mod_4_resample <- predict(mod_run_4, newdata, type ="response")
+mod_7_resample <- predict(mod_run_7, newdata, type ="response")
+
 
 tmp_stats <- tibble(
-  # obs = as.factor(mod_run_1$y),
-  obs = df_var_ref_levels_sample_1m$admitted,
-  fit = 1 - fitted(mod_run_1) # predicted probabilities 1
+  obs = as.factor(mod_run_7$y),
+  # obs = df_var_ref_levels_sample_1m$admitted,
+  fit = 1 - fitted(mod_run_7), # predicted probabilities 1
   # fit = fitted(mod_run_1) # predicted probabilities 1
-)
+  # OUT OF SAMPLE RECORDS:
+  obs_oos = newdata$admitted,
+  fit_oos = 1 - mod_7_resample
+) |> 
+  mutate(fit_oos = as.double(fit_oos))
 
-tibble(data = list)
+
 
 tmp_stats |> brier_class(obs, fit)
-tmp_stats |> brier_class(obs1, fit)
+tmp_stats |> brier_class(obs_oos, fit_oos)
+# tmp_stats |> brier_class(obs1, fit)
 tmp_stats |> roc_auc(obs, fit)
+tmp_stats |> roc_auc(obs_oos, fit_oos)
 # tmp_stats |> roc_auc(obs, fit, event_level = "second")
 # tmp_stats |> roc_auc(obs1, fit, event_level = "second")
 
 
 # COEFFS ------------------------------------------------------------------
 
-df_coeff_II <- mod_run_1 |>
+df_coeff_II <- mod_run_7 |>
   broom::tidy(parametric = TRUE) |>
   mutate(odds = exp(estimate)) |>
   mutate(lci = exp(estimate - 1.96 * std.error)) |>
   mutate(uci = exp(estimate + 1.96 * std.error)) |>
   select(term, odds, lci, uci)
 
-df_coeff_II |> saveRDS(here("data", "251204_dfq_coeff_II.rds"))
+df_coeff_II |> saveRDS(here("data", "251208_dfq_coeff_II.rds"))
+df_coeff_II |> saveRDS(here("data", "2512xx_dfq_coeff_II.rds"))
+df_coeff_II |> saveRDS(here("data", "251211_dfq_coeff_II.rds"))
 
 # DIAGNOSES ---------------------------------------------------------------
 
