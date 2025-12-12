@@ -21,32 +21,43 @@ df_diag_complaint_prep_l2_l1 <- df_diag_prep_l3 |>
   group_by(-n) |> 
   mutate(r = cur_group_id()) |> 
   ungroup() |> 
-  filter(r > 30) |> 
+  filter(r > 32 | is.na(diag01_code) | diag_descr_snomed == "Referral to service") |> 
+  # count(is.na(diag01_code), wt = n)
+  # count(r < 31, wt = n)
+  # REMOVE TOP 30 (ABOVE- ASSMUNING NA PART OF TOP 30) AND ALSO REMOVE COVID DIAGNOSES:
+  filter((!str_detect(diag_descr_snomed, "^COVID|^Acute COVID"))| is.na(diag_descr_snomed)) |>
   count(ec_chief_complaint_snomed_ct, wt = nn, sort = T) |> 
   left_join(df_ref, join_by(ec_chief_complaint_snomed_ct == snomed_code)) 
 
-# we have 1 run with diag, then anything not matched goes to complaint
+# WE HAVE 1 RUN WITH DIAGNOSIS, THEN ANYTHING NOT MATCHED GOES TO COMPLAINT
+# WE'VE PREVOUSLY LUMPED DISCONTINUED REFERRAL TO SERVICE WITH NAS, SO WILL 
+# CONTINUE TREATING AS SUCH. 
 
 df_diag_l3_1of2 <- df_diag_prep_l3 |> 
+  # WE'LL CARRY OVER NA DIAGNOSES TO COMPLAINT MAPPING TO SEE IF WE CAN MATCH:
+  filter(!(is.na(diag01_code)| diag_descr_snomed == "Referral to service")) |> 
   count(diag01_code, diag_descr_snomed, wt = nn, sort = T) |> 
-  slice(1:30) |> 
+  # slice(1:30) |> 
+  filter(row_number() %in% 1:30 | str_detect(diag_descr_snomed, "^COVID|^Acute COVID")) |> 
   mutate(diag = janitor::make_clean_names(diag_descr_snomed)) |>
+  mutate(diag = if_else(str_detect(diag, "covid"), "covid-19", diag)) |> 
   # mutate(diag = janitor::make_clean_names(diag_descr_snomed, allow_dupes = T)) |>
   mutate(diag = str_c("l3_", diag)) |> 
   select(-c(n, diag_descr_snomed)) 
 
+df_diag_l3_1of2 |> print(n=40)
 
 # L3 DIAGNOSES OVER TIME (PLOT) -------------------------------------------
 
 # df_diag_l3_1of2
   
-
 df_ecds_II_sample |>
   # # RECODE DISCONTINUED "REFERRAL TO SERVICE" AS NA
   # mutate(diag01_code = if_else(diag01_code == "306206005", NA_character_, diag01_code)) |>
   # # RECODE DISCONTINUED UTI AS UT INFECTIOUS DISEASE
   # mutate(diag01_code = if_else(diag01_code == "68566005", "4009004", diag01_code)) |>
-  inner_join(df_diag_l3_2of2, join_by(diag01_code)) |>
+  inner_join(df_diag_l3_1of2, join_by(diag01_code)) |>
+  # inner_join(lkp_diag_II, join_by(diag01_code)) |>
   count(year_quarter, diag) |>
   # filter(as_date(year_quarter) < as_date("2025-07-01")) |>
   #   count(diag, diag01_code, wt = n, sort = T) |>
@@ -70,22 +81,22 @@ df_ecds_II_sample |>
 #  -------------------------------------------------------------------------
 
 # AS INDICATED BY THE GRAPHIC ABOVE:
-# RECODE THE DISCONTINUED "REFERRAL TO SERVICE" LABEL AS NA:
+###### OBSELETE: RECODE THE DISCONTINUED "REFERRAL TO SERVICE" LABEL AS NA:###
 # RECODE DISCONTINUED UTI AS UT INFECTIOUS DISEASE:
 lkp_diag_II <- df_diag_l3_1of2 |> 
   mutate(diag = case_when(
-    diag01_code == "306206005" ~ "l3_na",
+    # diag01_code == "306206005" ~ "l3_na",
     diag01_code == "68566005" ~ "l3_lower_urinary_tract_infectious_disease",
     T ~ diag
   ))
   
-
+# lkp_diag_II
 
 # NOW COMPLAINT ---------------------------------------------------------------
 
 # BASED ON THE GRAPHIC BELOW AND SOME RESEARCH, WE'RE GOING TO
 # GROUP SPECIFIC INJURIES OF EXTREMITIES UNDER DISCONTIUED "INJURY OF X EXTREMITY" LABEL
-df_complaint_recode <- df_diag_complaint_prep_l2_l1 |>
+df_complaint_recode <- df_diag_complaint_prep_l2_l1 |> 
   filter(str_detect(derived_snomed_descr, "njury of")) |> 
   filter(str_detect(derived_snomed_descr, "ankle|foot|knee|leg|thigh|toe|elbow|finger|forearm|hand|upper arm|wrist")) |> 
   distinct(ec_chief_complaint_snomed_ct, derived_snomed_descr) |> 
@@ -98,6 +109,7 @@ df_complaint_recode <- df_diag_complaint_prep_l2_l1 |>
 
 # 79% COVERED BY L1 AND L2
 df_complaint_l2_1of2 <- df_diag_complaint_prep_l2_l1 |>
+  # print(n=22)
   filter(
     row_number() %in% 1:20 | ec_chief_complaint_snomed_ct %in% df_complaint_recode$ec_chief_complaint_snomed_ct
   ) |>
@@ -130,28 +142,28 @@ df_complaint_l2_1of2 <- df_diag_complaint_prep_l2_l1 |>
 
 # L2 COMPLAINT OVER TIME ------------------------------------------------
 
-# df_ecds_II_sample |> 
-#   anti_join(df_diag_l3_2of2, join_by(diag01_code)) |> 
-#   # nrow()
-#   inner_join(df_complaint_l2, join_by(ec_chief_complaint_snomed_ct)) |>
-#   count(year_quarter, diag) |>
-#   # filter(as_date(year_quarter) < as_date("2025-07-01")) |>
-#   #   count(diag, diag01_code, wt = n, sort = T) |>
-#   # print(n=32)
-#   # filter(is.na(diag_descr_snomed))
-#   ggplot(aes(as_date(year_quarter), n, group = diag, col = diag))+
-#   geom_line()+
-#   geom_point(size = 0.6)+
-#   geom_blank(aes(y = 0))+
-#   # facet_wrap(vars(diag_descr_snomed))+
-#   facet_wrap(vars(diag), scales = "free_y")+
-#   theme_minimal()+
-#   theme(
-#     strip.text = element_text(size = 5.5),
-#     legend.position = "none",
-#     axis.text = element_text(size = 5),
-#     axis.title = element_text(size = 5),
-#   )
+df_ecds_II_sample |>
+  anti_join(lkp_diag_II, join_by(diag01_code)) |>
+  # nrow()
+  inner_join(df_complaint_l2_1of2, join_by(ec_chief_complaint_snomed_ct)) |>
+  count(year_quarter, diag) |>
+  # filter(as_date(year_quarter) < as_date("2025-07-01")) |>
+  #   count(diag, diag01_code, wt = n, sort = T) |>
+  # print(n=32)
+  # filter(is.na(diag_descr_snomed))
+  ggplot(aes(as_date(year_quarter), n, group = diag, col = diag))+
+  geom_line()+
+  geom_point(size = 0.6)+
+  geom_blank(aes(y = 0))+
+  # facet_wrap(vars(diag_descr_snomed))+
+  facet_wrap(vars(diag), scales = "free_y")+
+  theme_minimal()+
+  theme(
+    strip.text = element_text(size = 5.5),
+    legend.position = "none",
+    axis.text = element_text(size = 5),
+    axis.title = element_text(size = 5),
+  )
 
 # df_complaint_l2 |> 
 #   bind_rows()
@@ -194,10 +206,13 @@ df_complaint_l2_1of2 <- df_diag_complaint_prep_l2_l1 |>
 
 # END L2 COMPLAINT OVER TIME ------------------------------------------------
 
-df_complaint_l1_1of2 <- df_diag_complaint_prep_l2_l1 |> 
+df_complaint_l1_1of2 <- df_diag_complaint_prep_l2_l1 |>
   filter(
     ! (row_number() %in% 1:20 | ec_chief_complaint_snomed_ct %in% df_complaint_recode$ec_chief_complaint_snomed_ct)
   ) |>
+  # filter(ecds_group1 == "Code deprecated") |> 
+  # count(derived_snomed_descr, sort = T) |> 
+  #   print(n=50)
   mutate(ecds_group1 = case_when(
     derived_snomed_descr == "Unsteady gait" ~ "Neurological", # *  Musculoskeletal / General
     derived_snomed_descr == "Gestation less than 20 weeks" ~ "ObGyn", 
@@ -247,29 +262,29 @@ df_complaint_l1_1of2 <- df_diag_complaint_prep_l2_l1 |>
 
 # L1 OVER TIME ------------------------------------------------------------
 
-# df_ecds_II_sample |>
-#   anti_join(df_diag_l3_2of2, join_by(diag01_code)) |> 
-#   anti_join(df_complaint_l2, join_by(ec_chief_complaint_snomed_ct)) |> 
-#   # nrow()
-#   inner_join(df_complaint_l1, join_by(ec_chief_complaint_snomed_ct)) |>
-#   # count(year_quarter, diag) |>
-#   # filter(as_date(year_quarter) < as_date("2025-07-01")) |>
-#   count(year_quarter, diag, sort = T) |>
-#   # print(n=32)
-#   # filter(is.na(diag_descr_snomed))
-#   ggplot(aes(as_date(year_quarter), n, group = diag, col = diag))+
-#   geom_line()+
-#   geom_point(size = 0.6)+
-#   geom_blank(aes(y = 0))+
-#   # facet_wrap(vars(diag_descr_snomed))+
-#   facet_wrap(vars(diag), scales = "free_y")+
-#   theme_minimal()+
-#   theme(
-#     strip.text = element_text(size = 5.5),
-#     legend.position = "none",
-#     axis.text = element_text(size = 5),
-#     axis.title = element_text(size = 5),
-#   )
+df_ecds_II_sample |>
+  anti_join(lkp_diag_II, join_by(diag01_code)) |>
+  anti_join(df_complaint_l2_1of2, join_by(ec_chief_complaint_snomed_ct)) |>
+  # nrow()
+  inner_join(df_complaint_l1_1of2, join_by(ec_chief_complaint_snomed_ct)) |>
+  # count(year_quarter, diag) |>
+  # filter(as_date(year_quarter) < as_date("2025-07-01")) |>
+  count(year_quarter, diag, sort = T) |>
+  # print(n=32)
+  # filter(is.na(diag_descr_snomed))
+  ggplot(aes(as_date(year_quarter), n, group = diag, col = diag))+
+  geom_line()+
+  geom_point(size = 0.6)+
+  geom_blank(aes(y = 0))+
+  # facet_wrap(vars(diag_descr_snomed))+
+  facet_wrap(vars(diag), scales = "free_y")+
+  theme_minimal()+
+  theme(
+    strip.text = element_text(size = 5.5),
+    legend.position = "none",
+    axis.text = element_text(size = 5),
+    axis.title = element_text(size = 5),
+  )
 
 # TIDY L2 AND L1 -----------------------------------------------------------
 
@@ -292,36 +307,34 @@ df_complaint_l1_2of2 <- df_complaint_l1_1of2 |>  # ---- follow the structure abo
   filter(!str_detect(diag, "rug")) 
 
 
-
-# 15 more codes .. meaning 65 levels altogether
 # NOT PROVIDER SPECIFIC:
 lkp_complaint_II <- bind_rows(
   df_complaint_l2_2of2,
   df_complaint_l1_2of2
 )
 
-# 60 CONDITION CATEGORIES IN ALL
-lkp_diag_II |> count(diag) # 28 ... 41%
-lkp_complaint_II |> count(diag) # 32 ... (38% +21 %)
+## 62 CONDITION CATEGORIES IN ALL
+# lkp_diag_II |> count(diag) # 30 
+# lkp_complaint_II |> count(diag) # 32 ... (38% +21 %)
 
 
 # CONDITION CATEGORIES OVER TIME ------------------------------------------
 
-plot_condition_over_time <- function(df) {
-  df |>
-    ggplot(aes(as_date(year_quarter), n, group = diag, col = diag)) +
-    geom_line() +
-    geom_point(size = 0.6) +
-    geom_blank(aes(y = 0)) +
-    facet_wrap(vars(diag), scales = "free_y") +
-    theme_minimal() +
-    theme(
-      strip.text = element_text(size = 5.5),
-      legend.position = "none",
-      axis.text = element_text(size = 5),
-      axis.title = element_text(size = 5),
-    )
-}
+# plot_condition_over_time <- function(df) {
+#   df |>
+#     ggplot(aes(as_date(year_quarter), n, group = diag, col = diag)) +
+#     geom_line() +
+#     geom_point(size = 0.6) +
+#     geom_blank(aes(y = 0)) +
+#     facet_wrap(vars(diag), scales = "free_y") +
+#     theme_minimal() +
+#     theme(
+#       strip.text = element_text(size = 5.5),
+#       legend.position = "none",
+#       axis.text = element_text(size = 5),
+#       axis.title = element_text(size = 5),
+#     )
+# }
 
 df_preplot_condition_over_time <- tibble(
   level = c(3, 2, 1),
@@ -342,16 +355,19 @@ df_preplot_condition_over_time <- tibble(
       inner_join(df_complaint_l1_2of2, join_by(ec_chief_complaint_snomed_ct)) |>
       count(year_quarter, diag)
   )
-)
+) |> 
+  mutate(n = map_dbl(data, \(df) df |> summarise(sum(n)) |> pull()  )) |> 
+  mutate(total = sum (n)) |> 
+  mutate(p = n/total)
 
-df_preplot_condition_over_time |> saveRDS(here("data", "251204_dfq_condition_over_time.rds"))
+df_preplot_condition_over_time |> saveRDS(here("data", "251211_dfq_condition_over_time.rds"))
 
 # FOR ACUITY OVER TIME, SEE DATA PREP SCRIPT.
 
 
-  plot_condition_over_time()
-  plot_condition_over_time()
-  plot_condition_over_time()
+  # plot_condition_over_time()
+  # plot_condition_over_time()
+  # plot_condition_over_time()
 
 # -------------------------------------------------------------------------
 
@@ -359,3 +375,4 @@ gc()
 gc()
 gc()
 gc()
+
