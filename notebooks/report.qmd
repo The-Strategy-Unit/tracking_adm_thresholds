@@ -1,6 +1,6 @@
 ---
 title: "Tracking Thresholds for<br>Hospital Admission Via Emergency Department"
-subtitle: "A site-level analysis<br><br><br>DRAFT REPORT<br>Autumn 2025"
+subtitle: "A Site-level Analysis<br><br><br>DRAFT REPORT<br>Autumn 2025"
 author:
   - name: Steven Wyatt
     email: swyatt@nhs.net
@@ -211,7 +211,7 @@ readRDS(here("data", "251110_nested.rds")) |>
 
 #### 2. Addressing incompleteness {#sec-incompleteness}
 
-At a site level, on average, 72% of records had missing values in *at least one* of the fields we had selected for our models. Since our intended regression models would not accept missing values, we had the choice to either: 1) exclude records with missing values; 2) impute missing values; or 3) assign missing values to an explicit missing category.[^3]
+At a site level, on average, 72% of records were missing a value in *at least one* of the fields we had selected for our models. Since our intended regression models would not accept missing values, we had the choice to either: 1) exclude records with missing values; 2) impute missing values; or 3) assign missing values to an explicit missing category.[^3]
 
 [^3]: This was only possible as the variables with missing values were exclusively categorical.
 

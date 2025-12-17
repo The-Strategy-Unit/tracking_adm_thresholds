@@ -1,6 +1,6 @@
 ---
 title: "Changes in Thresholds for<br>Hospital Admission Via Emergency Department"
-subtitle: "A National-level analysis<br><br><br>DRAFT REPORT<br>Winter 2025"
+subtitle: "A National-level Analysis<br><br><br>DRAFT REPORT<br>Winter 2025"
 author:
   - name: Steven Wyatt
     email: swyatt@nhs.net
@@ -63,14 +63,16 @@ plot_condition_over_time <- function(df) {
     geom_line() +
     geom_point(size = 0.6) +
     geom_blank(aes(y = 0)) +
-    facet_wrap(vars(diag), scales = "free_y") +
+    facet_wrap(vars(diag), scales = "free_y", labeller = label_wrap_gen(width = 30)) +
     theme_minimal() +
     theme(
-      strip.text = element_text(size = 7),
+      strip.text = element_text(size = 8.5),
       legend.position = "none",
       axis.text = element_text(size = 7),
-      axis.title = element_text(size = 7),
-    )
+      axis.title = element_text(size = 9),
+    )+
+     labs(x = "\nDate (quarter commencing)" , y = "Number of attendances\n")+
+  scale_y_continuous(labels = scales::comma)
 }
 
 ```
@@ -85,125 +87,58 @@ This analysis relied on data from the Emergency Care Data Set (ECDS). Each ECDS 
 
 We removed records where the patient left the ED before treatment was provided; where the patient died during an attendance; and where the individual was found to be dead on arrival at the ED.
 
-## Data quality and use of sampling
+## Data quality
 
 Whilst the ECDS is recognised as a high-quality data source, there is yet considerable variation in data quality, both across provider sites and over time. If overlooked, this variation could adversely affect the validity of our results.
 
-We were particularly concerned, here, about the completeness and consistency of variables that indicate the clinical features and severity of a patient's condition. These fields - *diagnosis*, *chief complaint*, and *acuity* - are likely to be the strongest predictors of admission and therefore have the greatest influence on our results. If we were to use a dataset with sizeable inconsistency in the coding of these fields (non-constant risks) over time, this could distort - and invalidate - our results. To increase the chances that our findings would be valid, we conducted the analysis on records from a sample of sites whose data met our quality requirements.[^1]
+We were particularly concerned, here, about the completeness and consistency of variables that indicate the clinical features and severity of a patient's condition. These fields - *diagnosis*, *chief complaint*, and *acuity* - are likely to be the strongest predictors of admission and therefore have the greatest influence on our results. If we were to use a dataset with sizeable inconsistency in the coding of these fields (non-constant risks) over time, this could distort, and even invalidate, our results. To increase the chances that our findings would be valid, we conducted the analysis on records from a sample of sites whose data met our quality requirements.
 
-[^1]: This sample was therefore non-random.
+## Selective sampling
 
-Whilst sampling should improve the validity of our results, we can only make *general statements* about changes in admission thresholds over time if our sample of sites - and the patients attending these - is *representative* of EDs nationwide. In other words, on aggregate, the sites and patients covered by our sample should have similar characteristics to those across England.
+Whilst sampling should improve the validity of our results, we can only make *general statements* about changes in admission thresholds over time if our sample of sites - and the profile of patients attending these sites - is *representative* of EDs nationwide. In other words, on aggregate, the sites and patients covered by our sample should have similar characteristics to those across England.
 
-There is a trade-off to be made, however. The larger our sample of sites, the more likely it is to be representative of the population of sites, and the more likely it will be that our findings are generalisable. However, the larger we make our sample, the more we compromise on data quality, which will likely decrease the validity of our results.
+There is a trade-off to be made here, however. The larger our sample of sites, the more likely it is to be representative of the population of sites, and the more likely it will be that our findings are generalisable. However, the larger we make our sample, the more we compromise on data quality, which will likely decrease the validity of our results.
 
-Details of our approach to this trade-off, as well as our data quality criteria, sampling methods, and the measures of representation, can be found below.
+Details of our approach to this trade-off, and measures of representation, are given in the sections below.
 
-#### Sample criteria
+We identified 138 sites that submitted data to ECDS and that had a consistent *site code* throughout the study period (2019/20 to 2024/25). These 138 EDs will represent the total population of providers that we might have used in this analysis, had data quality been universally high.
 
-We identified 138 sites that submitted data to ECDS throughout the study period (2019/20 to 2024/25) and that had a consistent site code. These 138 EDs will represent the total population of providers that we might have used in this analysis had data quality been universally high.
+As explained above, we viewed completeness and consistency across *diagnosis*, *acuity*, and *chief complaint* fields as being particularly important to this analysis. From the population of 138 sites, we found 20 that had completeness rates for these variables that exceeded 75% in every quarter of the period studied.
 
-As explained above, we viewed the completeness and consistency across *diagnosis*, *acuity*, and *chief complaint* fields as being particularly important to this study. From the population of 138 sites, only 20 had completeness rates for these variables that exceeded 75% in every quarter of the period studied.
+Aiming for yet greater consistency, we excluded a further 3 sites (from the initial selection of 20) where completion of the *diagnosis* field decreased, on average, by more than 3% per year. And we excluded one further site that showed two sizeable step changes in completion of the *diagnosis* field. This left us with a working sample of 16 sites.
 
-To ensure yet greater consistency, we excluded a further 3 sites (of the selection of 20) where the completion rate of diagnosis decreased, on average, by more than 3% per year. And we excluded one further site that showed two sizeable step changes in the completion of the diagnosis field. This left us with a working sample of 16 sites.
-
-<br>
-
-```{r}
-#| label: fig-diag-completion
-#| echo: false
-#| message: false
-#| warning: false
-#| fig-cap: "<br><br>"
-#| column: page
-#| fig-width: 12
-#| fig-asp: 0.618
-#| out-width: "85%"
-
-
-readRDS(here("data", "251204_qdf_diag_consistency.rds")) |>
-  tidyr::complete(der_provider_site_code, year_quarter) |> 
-  mutate(p = if_else(is.na(p), 0, p)) |> 
-  ggplot(aes(as_date(year_quarter), p, group = diag_descr_snomed, col = diag_descr_snomed))+
-  geom_line(alpha = .5, col = "dodgerblue2")+
-  geom_smooth(method = "lm", se = F, alpha = .3)+
-  geom_point(size = 0.6, col = "dodgerblue2")+
-  geom_blank(aes(y = 0))+
-  facet_wrap(vars(der_provider_site_code))+
-  # facet_wrap(vars(der_provider_site_code), scales = "free_y")+
-  theme_minimal()+
-  scale_y_continuous(labels = scales::percent)+
-  theme(
-    strip.text = element_text(size = 8),
-    legend.position = "none",
-    axis.text = element_text(size = 6),
-    axis.title = element_text(size = 8),
-  )+
-  labs(
-    x = "\nDate (quarter commencing)",
-    y = "Percentage of missing diagnosis values\n"
-    )
-
-
-```
-
-#### Continuity of outcome variable
-
-Finally, it was necessary to verify that our intended outcome variable (whether the patient was admitted or not) was complete throughout the study period, for each site in our working sample. At the same time, we established that any change in the crude rate of admission, by site, did not exceed +/-10% from any one quarter to the next. This might have been indicative of a data quality issue.
-
-```{r}
-#| label: fig-admitted-completion
-#| echo: false
-#| message: false
-#| warning: false
-#| fig-cap: "<br><br>"
-#| column: page
-#| fig-width: 12
-#| fig-asp: 0.618
-#| out-width: "85%"
-
-readRDS(here("data", "251204_dfq_outcome_ts.rds")) |> 
-  ggplot(aes(as_date(year_quarter), p_adm))+
-  geom_line()+
-  geom_point(size=.6)+
-  geom_blank(aes(y= 0))+
-  theme_minimal()+
-  theme(
-    strip.text = element_text(size = 6),
-    axis.text = element_text(size = 6),
-    axis.title = element_text(size = 9)
-    )+
-  scale_y_continuous(labels = scales::percent, breaks = c(0, 0.2, 0.4))+
-  # facet_wrap(vars(str_c(der_provider_site_code, "\n", site_name)))+
-  facet_wrap(vars(der_provider_site_code))+
-  labs(x = "\nDate (quarter commencing)", y = "% patients admitted\n")
-
-
-
-
-```
+As a final step, it was necessary to verify that our intended outcome variable (whether the patient was admitted or not (more details in @sec ... ) was complete throughout the study period, for each site in the working sample. At the same time, we established that any change in the crude rate of admission, by site, did not exceed +/-10% from any one quarter to the next. (Such swings might have been indicative of a data quality issue.) However, each of the 16 sites in our working sample met these criteria.
 
 ### Sites in the sample
 
-The 16 EDs meeting the data quality criteria above are named in table X. Data from these sites, which captures more than 7 million attendances over 6 years, will be used in the following analysis. Table y shows how the characteristics of EDs in the sample compare to the characteristics of EDs nationally.
+The 16 EDs meeting the data quality criteria above are named in @tbl-sample-sites. Data from these sites, which covers more than 7 million attendances over 6 years, will be used in the following analysis.
 
-The sample of EDs is slightly skewed towards smaller sites, and there is no representation of sites in London or North West England. However, the casemix of patients attending the EDs in our sample was broadly representative of the casemix of all patients who attended EDs over the period.
+@tbl-representation shows how the characteristics of EDs in the sample compare to the characteristics of EDs nationally. We see that the sample of EDs is slightly skewed towards smaller sites, and there is no representation of sites in London or North West England.[^1] However, the casemix of patients attending the EDs in our sample was broadly representative of the casemix of all patients who attended EDs over the period.[^2]
 
-When we relaxed the completeness threshold for our key variables from 75% to 70%, we saw no improvement in representation. If we were to continue to lower the threshold, in search of greater representation, we may affect the validity of our results.
+[^1]: When we relaxed the completeness threshold for our key variables from 75% to 70%, we saw no improvement in representation. If we were to continue to lower the threshold in search of greater representation, we may affect the validity of our results.
+
+[^2]: It is, in fact, likely that the population casemix is *more* similar to the sample casemix than shown in @tbl-representation. Whilst processing the data for this work, we found that sites in the population were less likely to complete the *discharge destination* field accurately, which will naturally lead to lower measured admission rates.
 
 ::: panel-tabset
 ## Sites in sample
 
 ```{r}
 #| label: tbl-sample-sites
-#| tbl-cap: "A list of sites used in this analysis."
+#| tbl-cap: "A list of sites whose data quality met our criteria for this analysis."
 #| echo: false
 #| message: false
 #| column: page
 
 
 readRDS(here("data", "251204_df_sample_sites.rds")) |>
+  mutate(trust_name = str_remove_all(trust_name, " NHS Foundation Trust| NHS Trust")) |> 
+  mutate(trust_name = str_replace(trust_name, "Lynn,", "Lynn")) |> 
    gt() |>
+  cols_label(
+    site_name = "Site Name",
+    trust_name = "Trust Name",
+    .fn = md
+  ) |> 
   fmt_auto() |>
   tab_style(
     style = list(
@@ -216,8 +151,6 @@ readRDS(here("data", "251204_df_sample_sites.rds")) |>
     table.font.size = "small"
   )
 
-
-
 ```
 
 ## How representative is this sample?
@@ -229,12 +162,21 @@ readRDS(here("data", "251204_df_sample_sites.rds")) |>
 #| message: false
 #| column: page
 
-readRDS(here("data", "251204_table_representation.rds")) |> 
+readRDS(here("data", "251204_table_representation.rds")) |>
+  ungroup() |> 
+  mutate(variable = str_replace_all(variable, "_", " ")) |> 
+  mutate(variable = str_replace(variable, "region ", "")) |> 
+  mutate(variable = str_replace(variable, " commissioning", "")) |> 
+  mutate(variable = case_when(
+    str_detect(variable, "arriv") ~ "arrival by ambulance",
+    str_detect(variable, "depriv") ~ "most deprived 20%",
+    T ~ variable
+  )) |> 
     gt() |> 
   opt_row_striping(row_striping = F) |> 
   fmt_auto() |> 
   cols_label(
-    rep_diff = "Representation:<br>Sample vs Pop",
+    rep_diff = "Representation:<br>Sample vs Pop.",
     .fn = md
   ) |> 
   tab_style(
@@ -252,19 +194,19 @@ readRDS(here("data", "251204_table_representation.rds")) |>
   #            replacement = "") |> 
   tab_row_group(
     label = "Patient demographics:",
-    rows =  str_detect(variable, "depriv|region_")
+    rows =  str_detect(variable, "most depriv|region")
   ) |> 
   tab_row_group(
-    label = "Case-mix-related:",
-    rows =  str_detect(variable, "age|arrive_|admitted")
+    label = "Patient case-mix:",
+    rows =  str_detect(variable, "age|arrival|admitted")
   ) |> 
   tab_row_group(
-    label = "Provider-related (23/24):",
+    label = "Site-related stats (2023/24):",
     rows =  str_detect(variable, "att|also|4h|12h")
   ) |> 
   tab_row_group(
     label = "",
-    rows =  str_detect(variable, "n_sites|23")
+    rows =  str_detect(variable, "n sites|23")
   ) |>
   tab_style(
     style = cell_text(weight = "bold"),
@@ -285,42 +227,90 @@ readRDS(here("data", "251204_table_representation.rds")) |>
 
 #### **Addressing incompleteness**
 
-On average, XX% of records in our sample had missing values in *at least one* of the fields we had selected for our model. Since our intended logistic regression model would not accept missing values, we had the choice to either: 1) exclude records with missing values; 2) impute missing values; or 3) assign missing values to an explicit missing category.[^2]
+About 13% of records in the sample were missing a value in *at least one* of the fields we had planned to use in our model. Since our intended logistic regression model would not accept missing values, we had the choice to either: 1) exclude records with missing values; 2) impute missing values; or 3) assign missing values to an explicit missing category.[^3]
 
-[^2]: This was only possible as the variables with missing values were exclusively categorical.
+[^3]: This was only possible as the variables with missing values were exclusively categorical.
 
-We opted for the third approach, which allowed us to make use all the records in our study dataset without the need to employ an additional (and potentially complex) imputation algorithm. This approach also allows the model to make use of the missingness signals. Importantly here, we haven’t made the assumption that data were missing at random. We believed, instead, that the missingness was more likely to be due to failures of systems and processes.[^3]
+We opted for the third approach, which allowed us to make use all the records in our study dataset without the need to employ an additional (and potentially complex) imputation algorithm. This approach also allows the model to make use of the missingness signals. Importantly here, we haven’t made the assumption that data were missing at random. We believed, instead, that the missingness was more likely to be due to failures of systems and processes.[^4]
 
-[^3]: If, however, the missingness was random, there is a risk that models we build could incorporate a false signal. This signal would compete with other variables for explanatory power, which may ultimately distort the coefficients of interest.
+[^4]: If, however, the missingness was random, there is a risk that models we build could incorporate a false signal. This signal would compete with other variables for explanatory power, which may ultimately distort the coefficients of interest.
 
 #### Creating new variables
 
-Further to the treatment of missing values, we chose to synthesise a variable that captured the clinical features of a patient's condition. The reasons for this were largely related to the fact that the *primary diagnosis* variable, unmodified, consisted of a large number of categories (9,800+), which would translate into a similarly large number of predictor variables. If we could substantially reduce the number of predictors whilst minimising the loss of information, we would be more likely to end up with a model that was more capable of distinguishing between genuine effect and random variation.
+Further to the treatment of missing values, we chose to synthesise a variable that captured the clinical features of a patient's condition. The reasons for this were largely related to the fact that the *primary diagnosis* variable, unmodified, consisted of a large number of categories (9,800+), which would translate into a similarly large number of predictor variables. As this would likely create various problems at the modelling stage, we aimed to substantially reduce the number of predictors we would pass to the model whilst minimising the loss of information.
 
-To produce this new variable we used information from the diagnosis and chief complaint variables, together with the 3-tier hierarchy from the “ECDS Refset MAX specification”, created by NHSE.
+To produce the new variable, we used information from the *diagnosis* and *chief complaint* variables, together with the 3-tier diagnosis hierarchy from the “ECDS Refset MAX Specification”, created by NHSE.
 
-We first created a frequency table of primary diagnoses in our sample, and noted the 30 most frequent SNOMED codes for use in our new variable. To this list, we added two SNOMED diagnosis codes related to acute COVID-19 infection.[^4]
+We first created a frequency table of primary diagnoses in our sample, and recorded the 30 most frequent SNOMED codes for use in our new variable. To this list of 30, we added two SNOMED diagnosis codes related to acute COVID-19 infection.[^5] These were equivalent to Level 3 of the diagnosis hierarchy (from the ECDS Refset), which gives the most precise details of a clinical condition.
 
-[^4]: These two codes are mapped to one condition (COVID-19).
+[^5]: These two codes are mapped to one condition (COVID-19).
 
-Having removed activity with these diagnosis codes from our sample, we then identified the 20 most frequent chief complaint codes and noted these.
+Having removed activity with these primary diagnosis codes from our sample, we then identified the 20 most frequent chief complaint codes in the remaining data, and recorded these. These chief complaint codes were equivalent to Level 2 of the diagnosis hierarchy.
 
-We mapped the remaining chief complaint codes to the ECDS Refset diagnosis table, and grouped conditions at the highest (most general) level. Whilst there were 36 instances where the SNOMED code was labelled as “deprecated” when mapped to the Refset, we were able to categorize these manually with the aid of archived material.
+We mapped the remaining chief complaint codes to the ECDS Refset diagnosis table, and grouped conditions at the highest (most general) level of the diagnosis hierarchy (Level 1). Whilst there were 36 instances where the SNOMED code was labelled as “deprecated” when mapped to the Refset, we were able to categorize these manually, with the aid of archived material.
 
-We therefore captured the condition (where given) of all patients in the sample, at various levels of detail, in 66 categories. On examining the trends for these 66 categories, we saw evidence of codes being re-classified or dropped entirely. We attempted to reconcile these discontinuities, by:
+We therefore captured the clinical condition (where given) of all patients in the sample, at 3 Levels of detail, in a total of 66 categories. On examining the trends for these 66 categories, we saw evidence of codes being re-classified or dropped entirely. We attempted to reconcile these discontinuities, by:
 
 -   Uniting different codes for urinary tract infections
 
 -   Uniting different codes for injuries of the upper, and lower, extremities
 
--   Moving lower limb pain and upper limb pain from Level 2 to musculoskeletal conditions in Level 1.
+-   Moving "Lower limb pain" and "Upper limb pain" from Level 2 to Musculoskeletal conditions in Level 1.
 
--   Moving drug and alcohol abuse from Level 1 into substance misuse in Level 2.
+-   Moving "Drug and alcohol abuse" from Level 1 to "Substance misuse" in Level 2.
 
-These changes left us with 62 categories indicating the clinical features of a patient’s condition. The 62 categories, and their timeseries, can be seen in @fig-diag-ts-l3, @fig-diag-ts-l2, and @fig-diag-ts-l1. The proportion of attendances covered by each tier is shown in ....
+These changes left us with 62 categories indicating the clinical features of a patient’s condition. The proportion of attendances covered at each level of the diagnosis hierarchy is shown in @tbl-diag-propos, whilst the 62 categories, and plots of their appearance over time, can be seen in @fig-diag-ts-l3, @fig-diag-ts-l2, and @fig-diag-ts-l1 .
+
+<br>
 
 ::: panel-tabset
-## Diagnosis tier 3 (most precise)
+## Coverage
+
+```{r}
+#| label: tbl-diag-propos
+#| echo: false
+#| message: false
+#| warning: false
+#| fig-cap: "The proportion of attendances in the sample that is covered by each level of the ECDS Refset diagnosis hierarchy.<br><br>"
+#| column: page
+#| fig-width: 12
+#| fig-asp: 0.618
+#| out-width: "85%"
+
+df_preplot_condition_over_time <- readRDS(here("data", "251211_dfq_condition_over_time.rds")) |> 
+  mutate(data = map(data, function(df){
+    df |> 
+       mutate(diag = str_remove(diag, "l[0-9]{1}_")) |> 
+  mutate(diag = str_replace_all(diag, "_", " ")) |> 
+  mutate(diag = str_to_title(diag))
+    
+  }))
+
+df_preplot_condition_over_time |> 
+  mutate(precision = case_when(
+    level == "3" ~ "High",
+    level == "2" ~ "Medium",
+    level == "1" ~ "Low",
+    T ~ as.character(level)
+  )) |> 
+  select(level, precision, p) |> 
+  gt() |> 
+   cols_label(
+    level = "Level of grouping",
+    precision = "Specificity of label",
+    p = "% sample covered",
+    .fn = md
+  ) |> 
+  fmt_auto() |> 
+  fmt_percent(columns = p, decimals = 1) |> 
+    tab_options(
+    data_row.padding = px(1)
+    #table.font.size = "small"
+  )
+
+```
+
+## Condition Level 3
 
 ```{r}
 #| label: fig-diag-ts-l3
@@ -333,14 +323,15 @@ These changes left us with 62 categories indicating the clinical features of a p
 #| fig-asp: 0.618
 #| out-width: "85%"
 
-df_preplot_condition_over_time <- readRDS(here("data", "251211_dfq_condition_over_time.rds"))
+
 
 df_preplot_condition_over_time$data[[1]] |> 
   plot_condition_over_time()
+ 
 
 ```
 
-## Diagnosis tier 2
+## Condition Level 2
 
 ```{r}
 #| label: fig-diag-ts-l2
@@ -359,15 +350,14 @@ df_preplot_condition_over_time$data[[2]] |>
 
 ```
 
-## Diagnosis tier 1 (most general)
+## Condition Level 1
 
 ```{r}
-
 #| label: fig-diag-ts-l1
 #| echo: false
 #| message: false
 #| warning: false
-#| fig-cap: "<br><br>"
+#| fig-cap: "  <br><br>"
 #| column: page
 #| fig-width: 12
 #| fig-asp: 0.618
@@ -380,130 +370,35 @@ df_preplot_condition_over_time$data[[3]] |>
 ```
 :::
 
-```{r}
-#| label: tbl-diag-propos
-#| echo: false
-#| message: false
-#| warning: false
-#| fig-cap: "<br><br>"
-#| column: page
-#| fig-width: 12
-#| fig-asp: 0.618
-#| out-width: "85%"
+Moving on to other variables, we created new levels of the acuity variable – merging two or more of the original levels – for 3 EDs where we observed erractic recording of acuity levels over time.
 
-df_preplot_condition_over_time |> 
-  select(level, p) |> 
-  gt() |> 
+We created a new *referral source* variable consisting of six levels, which blended categories from the *attendance source* field.
 
+Finally, we created 4 new binary variables indicating whether the patient:
 
-```
+1.   Arrived at ED by ambulance (of any type)
 
-Moving on to other variables, we created unique levels of the acuity variable – merging two or more of the original levels – for 3 EDs, since, for these sites, we observed erratic variation in the acuity levels over time.
+2.   Arrived at night (which we took to be 8pm - 8am)
 
-We created a new *referral source* variable consisting of six levels, which combined categories from the *attendance source* field. Finally, we created 3 new binary variables indicating 1) whether the patient arrived at ED by ambulance (of any type); 2) whether the patient arrived at outside daytime hours (or 8pm - 8am); and 3) whether the patient arrived at a weekend.
+3.   Arrived at a weekend
 
-::: panel-tabset
-## Separate
+4.   Was admitted, or not
 
-```{r}
-#| label: fig-acuity-ts-sep
-#| echo: false
-#| message: false
-#| warning: false
-#| fig-cap: "<br><br>"
-#| column: page
-#| fig-width: 12
-#| fig-asp: 0.618
-#| out-width: "85%"
-
-
-readRDS(here("data", "251204_dfq_acuity_over_time.rds")) |> 
-  #
-  mutate(acuity = as.character(acuity)) |> 
-  mutate(acuity = case_when(
-    site_name == "Great Western Hospital A&E" &
-      acuity %in% c("Standard", "Urgent", "Non-urgent") ~ "NonUrg/Std/Urg",
-    site_name == "Worthing Hospital" &
-      acuity %in% c("Standard", "Non-urgent") ~ "NonUrg/Std",
-    site_name == "Leicester Royal Infirmary" &
-      acuity %in% c("Standard", "Urgent") ~ "Std/Urg",
-    T ~ acuity
-  )) |> 
-  #
-  count(site_name, year_quarter, acuity, wt = n) |> 
-  group_by(site_name, year_quarter) |> 
-  mutate(p = n/sum(n)) |> 
-  ungroup() |> 
-  ggplot(aes(year_quarter, p, col = acuity, group = acuity))+
-  geom_line()+
-  geom_point(size = .9)+
-  geom_blank(aes(y=0))+
-  #facet_wrap(vars(site_name), scales = "free_y")+
-  facet_wrap(vars(site_name))+
-  theme_minimal()+
-  theme(
-    legend.position = "top",
-    legend.text = element_text(size = 10),
-    legend.title = element_text(size = 10),
-    axis.text = element_text(size = 6),
-    axis.title = element_blank(),
-    strip.text = element_text(size = 8),
-  )+
-  guides(colour = guide_legend(nrow = 1))
-
-```
-
-## Merged
-
-```{r}
-#| label: fig-acuity-ts-merged
-#| echo: false
-#| message: false
-#| warning: false
-#| fig-cap: "<br><br>"
-#| column: page
-#| fig-width: 12
-#| fig-asp: 0.618
-#| out-width: "85%"
-
-
-readRDS(here("data", "251204_dfq_acuity_over_time.rds")) |> 
-  count(site_name, year_quarter, acui3, wt = n) |> 
-  group_by(site_name, year_quarter) |> 
-  mutate(p = n/sum(n)) |> 
-  ungroup() |> 
-  ggplot(aes(year_quarter, p, col = acui3, group = acui3))+
-  geom_line()+
-  geom_point(size = .6)+
-  geom_blank(aes(y=0))+
-  facet_wrap(vars(site_name), scales = "free_y")+
-  theme_minimal()+
-  theme(
-    legend.position = "top",
-    legend.text = element_text(size = 10),
-    legend.title = element_text(size = 10),
-    axis.text = element_text(size = 6),
-    axis.title = element_blank(),
-    strip.text = element_text(size = 8),
-  )+
-  guides(colour = guide_legend(nrow = 1))
-
-```
-:::
+This last variable would become the outcome variable in our model. It was derived using two fields: *discharge destination* and *discharge status*. We categorised all patients with a *discharge destination* code indicating that they were moved to a ward, operating theatre, or special/high/intensive care unit as “admitted patients”. All other patients were provisionally classified as “not admitted”. If, however, a *discharge status* code indicated that a patient was discharged to Same Day Emergency Care; to an urgent treatment centre; or to the care of a GP; the *discharge status* code would trump any value given by *discharge destination*, and the patient would be categorised as "not admitted".
 
 ## Model specification
 
-We fitted a logistic generalised additive model (logistic GAM) to the processed data, with our binary outcome variable being whether the patient was admitted or not. Our variable of interest was the quarter of the financial year that a patient attended. We also included variables to adjust for casemix (as far as possible), namely: *age* (as a spline-based smooth) interacting with *sex*; *acuity*; the new, grouped primary diagnosis variable; whether the patient arrived by ambulance or not; and the *referral source*. We incorporated variables to account for the ethnicity and socioeconomic status of patients.[^5]^,^ [^6] In addition, we included time-related variables to control for weekday or weekend attendances, and whether the attendance was during the night (8 pm to 8 am).
+We fitted a logistic generalised additive model (logistic GAM) to the processed data, with our binary outcome variable being whether the patient was admitted or not. Our variable of interest was the quarter of the financial year in which a patient attended. We also included variables to adjust for casemix (as far as possible), namely: *age* (as a spline-based smooth) interacting with *sex*; *acuity*; the new, primary diagnosis variable; whether the patient arrived by ambulance or not; and the *referral source*. We incorporated variables to account for the ethnicity and socioeconomic status of patients.[^6]^,^ [^7] In addition, we included time-related variables to control for weekday or weekend attendances, and whether the attendance was during the night (8 pm to 8 am). The ED site was the final variable in the model.
 
-[^5]: The ethnicity variable contained 18 categories which broadly corresponded to the [high-level groups used by the ONS in the 2021 census](https://www.ethnicity-facts-figures.service.gov.uk/style-guide/ethnic-groups/).
+[^6]: The ethnicity variable contained 18 categories which broadly corresponded to the [high-level groups used by the ONS in the 2021 census](https://www.ethnicity-facts-figures.service.gov.uk/style-guide/ethnic-groups/).
 
-[^6]: The Index of Multiple Deprivation quintile covering the area in which a patient lived was used a proxy for socioeconomic status.
+[^7]: The Index of Multiple Deprivation quintile covering the area in which a patient lived was used a proxy for socioeconomic status.
 
-The ED site was the final variable in the model. As graphical evidence indicated that different sites might interpret a patient's acuity level in different ways (and the acuity variable would likely be highly influential), we included an interaction between ED site and acuity.
+As graphical evidence indicated that different sites might interpret a patient's acuity level in different ways (and the acuity variable would likely be highly influential), we included an interaction between ED site and acuity. For similar reasons, we also included an interaction between ED site and the "NA complaint" variable.
 
 We intentionally omitted contextual factors such as the level of crowding and the inpatient occupancy at the time a patient was treated. Whilst these variables are challenging to engineer for an extended time period, we also wanted to leave these factors as possible explanations for any changes seen in admission thresholds **(less relevant excuse for quarterly data??)**. If we were to adjust for such effects they would not (in theory) be visible in the time series.
 
-We fitted the model to a random sub-sample of X million records.
+We fitted the model to a random sub-sample of 2.5 million records.
 
 ## Reproducibility
 
@@ -511,22 +406,25 @@ The computer code used in this analysis can be found a [GitHub repository](https
 
 # Results
 
-The aim of this analysis was to describe national-level changes in threshold for hospital admission via ED. We therefore used a statistical model to estimate the casemix-adjusted odds of admission over time. The model coefficients corresponding to the each quarter of every financial year give us these odds, and we show these coefficients in Fig X.
+The aim of this analysis was to describe national-level changes in threshold for hospital admission via ED. We used a logistic GAM to estimate the casemix-adjusted odds of admission over time. Model coefficients corresponding to each quarter of each financial year in the study period are the values of interest. We show these values, and their 95% confidence intervals, in @fig-odds-quarter. The reference level (with an odds ratio of 1) is the first quarter in the study period: Quarter 1 of 2019/20.
 
-Note confidence intervals - HOW TO INTERPRET which may change.
+We might divide the time span covered by @fig-odds-quarter into three distinct periods: 1) the pre-pandemic period; 2) the pandemic (and subsequent recovery) period; and 3) the post-pandemic period. The most prominent feature of the plot is the rise in the casemix-adjusted odds of admission during, and in the wake of, the pandemic. The results indicate that the odds of a particular patient with a specific condition being admitted in this period were generally 10-20% higher than at other times.
 
-The results can dotted line represents odds are equal to those of Q1 of 2019/20. We might divide the time period into three parts: the pre-pandemic period; the pandemic period; and the post-pandemic period. The first point to note is that these estimates generally suggest that the odds of admission during the pandemic period were 10-15% higher than in the other periods.
+If we look beyond the obvious rise during the pandemic, these estimates suggest the odds of admission immediately prior to the pandemic were similar to the odds in the post-pandemic period. If we compare quarter with quarter, across the pre- and post-pandemic periods ( as in @fig-odds-quarter-panel ), few of the differences we see are statistically significant.
 
-The odds of admission pre- and post-pandemic are similar (to be interpreted with full model).
+<!--#  Throughout, we see evidence of a seasonal pattern, with admission generally more likely in the final quarter of each financial year (i.e. between January and March), than it is in the preceding quarters. -->
 
-Values of the other (parametric) model coefficients, and the model perfomance statistics, are given in Appendix X
+Values of the other (parametric) model coefficients, and model performance statistics, are given in @sec-appendix.
+
+::: panel-tabset
+## Coefficients of year-quarter
 
 ```{r}
 #| label: fig-odds-quarter
 #| echo: false
 #| message: false
 #| warning: false
-#| fig-cap: "<br><br>"
+#| fig-cap: "Changes in the casemix-adjusted odds of admission via ED, between 2019/20 Quarter 1 and 2024/25 Quarter 4.<br><br>"
 #| column: page
 #| fig-width: 12
 #| fig-asp: 0.618
@@ -536,14 +434,57 @@ Values of the other (parametric) model coefficients, and the model perfomance st
 # readRDS(here("data", "2512xx_dfq_coeff_II.rds")) |>
 #readRDS(here("data", "251208_dfq_coeff_II.rds")) |>
 #readRDS(here("data", "2512yy_dfq_coeff_II.rds")) |>
-readRDS(here("data", "251211_dfq_coeff_II.rds")) |>
+# readRDS(here("data", "251211_dfq_coeff_II.rds")) |>
+tmp <- readRDS(here("data", "251212_dfq_coeff_II.rds")) |>
   filter(str_detect(term, "year")) |>
   mutate(term = str_remove(term, "year_quarter")) |>
   mutate(row = row_number()) |>
+  mutate(date = case_when(
+    str_detect(term, "Q1") ~ make_date(year = as.numeric(str_sub(term, 1, 4)) -1, 04, 01),
+    str_detect(term, "Q2") ~ make_date(year = as.numeric(str_sub(term, 1, 4)) -1, 07, 01),
+    str_detect(term, "Q3") ~ make_date(year = as.numeric(str_sub(term, 1, 4)) -1, 10, 01),
+    str_detect(term, "Q4") ~ make_date(year = str_sub(term, 1, 4), 01, 01) 
+  )) |> 
+  add_row(
+    term = NA_character_,
+    odds = 1,
+    lci = NA_real_,
+    uci = NA_real_, 
+    row = NA_real_,
+    date = as_date("2019-04-01")
+    ) 
+  
+tmp |> 
+  select(-c(term, row)) |> 
   ggplot() +
-  geom_hline(yintercept = 1, lty = "dashed", colour = "grey20", alpha = 0.5) +
-  geom_pointrange(aes(term, odds, ymin = lci, ymax = uci), col = "grey40", stroke = NA) +
-  # geom_smooth(aes(row, odds), se = F)+
+  # geom_hline(yintercept = 1, lty = "dashed", colour = "grey20", alpha = 0.5) +
+  geom_point(aes(date, odds), col = "grey40", stroke = NA, size = 2) +
+  #  geom_rect(xmin = as_date("2020-03-01"), xmax = as_date("2022-03-01"), ymin = log(0.88), ymax = log(1.23),
+  #   fill = "darkolivegreen1",
+  #   # fill = "green",
+  #   alpha = 0.01
+  # )+
+  #  geom_rect(xmin = as_date("2019-01-01"), xmax = as_date("2022-03-01"), ymin = log(0.95), ymax = log(1.0125),
+  #   fill = "darkolivegreen1",
+  #   # fill = "green",
+  #   alpha = 0.01
+  # )+
+  #  geom_rect(xmin = as_date("2022-03-01"), xmax = as_date("2025-04-01"), ymin = log(0.95), ymax = log(1.0125),
+  #   fill = "darkolivegreen1",
+  #   # fill = "green",
+  #   alpha = 0.01
+  # )+
+  geom_text(
+    x = as_date("2021-02-01"),
+    y = log(1.08), 
+    label = "← pandemic, and recovery period →→→→→",
+    size = 4,
+    alpha = .04, 
+    # colour = "darkolivegreen3"
+    )+
+  geom_pointrange(aes(date, odds, ymin = lci, ymax = uci), col = "grey40", stroke = NA, alpha = 1) +
+  # geom_smooth(aes(date, odds), se = F, linewidth = 3, alpha = .02)+
+#  stat_smooth(aes(date, odds), geom = "line", se = F, linewidth = 3, alpha = .05, span = 0.47)+
   theme_minimal() +
   # coord_flip() +
   scale_y_log10(
@@ -558,21 +499,162 @@ readRDS(here("data", "251211_dfq_coeff_II.rds")) |>
     #   "110%x\nas likely as\nav. occupancy"
     # )
   ) +
-  scale_x_discrete(
-    # breaks = seq(1, 23, 2)
-    # labels = 
-  )+
+  scale_x_date(
+    breaks = seq(as.Date("2019-04-01"), as.Date("2025-04-01"), by = "1 year"),
+    # date_breaks = "1 year",
+    # date_minor_breaks = "3 month",
+    date_labels = "%b %Y"
+   )+
   theme(
-    # axis.title.y = element_blank(),
-    axis.text = element_text(size = 7),
-    axis.title.y = element_text(size = 9),
-    axis.title.x = element_blank(),
+    axis.text = element_text(size = 10),
+    axis.title = element_text(size = 12),
+    plot.margin = margin(.2,.5,.2,.2, "cm")
     # plot.margin = margin(5, 20, 5, 5),
     # panel.grid.minor = element_blank(),
   ) +
   labs(
-    y = "Case-mix-adjusted odds of admission (log scale)\nReference category: 2025 Q4\n"
+    y = "Casemix-adjusted odds of admission (log scale)\nReference category: 2019 Q1\n",
+    x = "\nDate (quarter commencing)" 
   ) 
+
+```
+
+## Panels by quarter 
+
+```{r}
+#| label: fig-odds-quarter-panel
+#| echo: false
+#| message: false
+#| warning: false
+#| fig-cap: "Changes in the casemix-adjusted odds of admission via ED, between 2019/20 and 2024/25. Results for each quarter are shown in separate panels to facilitate comparison.<br><br>"
+#| column: page
+#| fig-width: 12
+#| fig-asp: 0.618
+#| out-width: "85%"
+
+tmp |> 
+  mutate(quarter = (str_sub(term, -1 ))) |> 
+  mutate(quarter = if_else(is.na(quarter), "1", quarter)) |> 
+  mutate(quarter = str_c("Quarter ", quarter)) |> 
+  mutate(covid = if_else(
+    between(date, as_date("2020-03-15"), as_date("2022-03-15")), 
+    1, 0)) %>%
+  ggplot() +
+  geom_rect(xmin = as_date("2020-03-15"), xmax = as_date("2022-03-15"), ymin = log(0.92), ymax = log(1.11),
+            # fill = "darkolivegreen1",
+            fill = "grey",
+            alpha = 0.03
+  )+
+  # geom_rect(xmin = as_date("2022-03-01"), xmax = as_date("2025-04-01"), ymin = log(0.95), ymax = log(1.0125),
+  #           fill = "darkolivegreen1",
+  #           # fill = "green",
+  #           alpha = 0.01
+  # )+
+  geom_pointrange(
+    aes(date, odds, ymin = lci, ymax = uci, colour = quarter),
+    stroke = NA) +
+  geom_point(aes(date, odds, 
+                 # shape = quarter,
+                 colour = quarter
+                 ), stroke = NA, size = 3) +
+  geom_point(
+    data = . %>% filter(covid == 1),
+    aes(date, odds, 
+        # shape = quarter
+        ), colour = "grey75", stroke = NA, size = 3) +
+  # theme_minimal() +
+  geom_pointrange(
+    data = . %>% filter(covid == 1),
+    aes(date, odds, ymin = lci, ymax = uci),
+    colour = "grey75",
+    stroke = NA
+    ) +
+  geom_text(
+    x = as_date("2020-12-01"),
+    y = log(1.08), 
+    label = " pandemic →",
+    size = 3,
+    alpha = .7, 
+    colour = "grey"
+    )+
+  theme_bw() +
+  # coord_flip() +
+  scale_y_log10(
+    limits = c(0.87, 1.24)
+  ) +
+  scale_x_date(
+    # date_breaks = "2 year",
+    breaks = seq(as.Date("2019-04-01"), as.Date("2025-04-01"), by = "2 year"),
+    date_labels = "%b '%y"
+  )+
+  theme(
+    axis.text = element_text(size = 9),
+    axis.title = element_text(size = 12),
+    axis.ticks = element_blank(),
+    legend.position = "none",
+    strip.text = element_text(size = 12),
+    panel.spacing = unit(2, "lines"),
+    plot.margin = margin(.2,.5,.2,.2, "cm")
+  ) +
+  labs(
+    y = "Casemix-adjusted odds of admission (log scale)\nReference category: 2019 Q1\n",
+    x = "\nDate (quarter commencing)" 
+  ) +
+  facet_wrap(vars(quarter), nrow = 1)
+
+
+```
+:::
+
+# Discussion
+
+Text here
+
+# Appendix {#sec-appendix}
+
+#### Model performance measures
+
+The fitted model scored an AUROC of 0.866 and a Brier Score of 0.132. Performance measures were calculated out of (sub-) sample data, which should improve the robustness of these statistics.
+
+#### Additional model coefficients
+
+```{r}
+#| label: fig-odds-other
+#| echo: false
+#| message: false
+#| warning: false
+#| fig-cap: "<br><br>"
+#| column: page
+#| fig-height: 15
+#| fig-asp: 1.618
+##| out-width: "100%"
+# #| fig-width: 12
+
+
+readRDS(here("data", "251212_dfq_coeff_II.rds")) |>
+  filter(!str_detect(term, "year|Interce|iag|acu")) |>
+  mutate(grp = str_sub(term, 1, 3)) |> 
+  # count(grp)
+  # filter(str_detect(term, "diag")) |>
+  # filter(str_detect(term, "walk"))
+  # arrange(desc(odds)) |>
+  # slice_sample(n = 30) |>
+  ggplot() +
+  geom_hline(yintercept = 1, lty = "dashed", colour = "grey20", alpha = 0.5) +
+  geom_pointrange(aes(reorder(term, odds), odds, ymin = lci, ymax = uci, col = grp),  stroke = NA) +
+  theme_minimal() +
+  coord_flip() +
+  scale_y_log10() +
+  theme(
+     axis.title.x = element_text(size = 9),
+    axis.title.y = element_blank(),
+    legend.position = "none"
+  ) +
+  labs(
+    y = "\nCase-mix-adjusted odds of admission (log scale)"
+  )+
+  facet_wrap(vars(grp), scales = "free_y", ncol = 1)
+
 
 ```
 
@@ -606,59 +688,7 @@ readRDS(here("data", "251204_dfq_coeff_II.rds")) |>
   coord_flip() +
   scale_y_log10() +
   theme(
-     axis.title.x = element_text(size = 9),
-    axis.title.y = element_blank(),
-    legend.position = "none"
-  ) +
-  labs(
-    y = "\nCase-mix-adjusted odds of admission (log scale)"
-  )+
-  facet_wrap(vars(grp), scales = "free_y", ncol = 1)
-
-
-```
-
-# Discussion
-
-Text here
-
-# Appendix
-
-#### Performance measures
-
-The fitted model scored an AUROC of 0.866 and a Brier Score of 0.132. Performance measures were calculated out of (sub-) sample data, which should improve the robustness of these statistics.
-
-#### Additional model coefficients
-
-```{r}
-#| label: fig-odds-other
-#| echo: false
-#| message: false
-#| warning: false
-#| fig-cap: "<br><br>"
-#| column: page
-#| fig-height: 15
-#| fig-asp: 1.618
-##| out-width: "100%"
-# #| fig-width: 12
-
-
-readRDS(here("data", "251204_dfq_coeff_II.rds")) |>
-  filter(!str_detect(term, "year|Interce|iag|acu")) |>
-  mutate(grp = str_sub(term, 1, 3)) |> 
-  # count(grp)
-  # filter(str_detect(term, "diag")) |>
-  # filter(str_detect(term, "walk"))
-  # arrange(desc(odds)) |>
-  # slice_sample(n = 30) |>
-  ggplot() +
-  geom_hline(yintercept = 1, lty = "dashed", colour = "grey20", alpha = 0.5) +
-  geom_pointrange(aes(reorder(term, odds), odds, ymin = lci, ymax = uci, col = grp),  stroke = NA) +
-  theme_minimal() +
-  coord_flip() +
-  scale_y_log10() +
-  theme(
-     axis.title.x = element_text(size = 9),
+    axis.title.x = element_text(size = 9),
     axis.title.y = element_blank(),
     legend.position = "none"
   ) +
