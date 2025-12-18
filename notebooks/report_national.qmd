@@ -225,7 +225,7 @@ readRDS(here("data", "251204_table_representation.rds")) |>
 
 ## Data processing
 
-#### **Addressing incompleteness**
+#### Addressing incompleteness
 
 About 13% of records in the sample were missing a value in *at least one* of the fields we had planned to use in our model. Since our intended logistic regression model would not accept missing values, we had the choice to either: 1) exclude records with missing values; 2) impute missing values; or 3) assign missing values to an explicit missing category.[^3]
 
@@ -376,13 +376,13 @@ We created a new *referral source* variable consisting of six levels, which blen
 
 Finally, we created 4 new binary variables indicating whether the patient:
 
-1.   Arrived at ED by ambulance (of any type)
+1.  Arrived at ED by ambulance (of any type)
 
-2.   Arrived at night (which we took to be 8pm - 8am)
+2.  Arrived at night (which we took to be 8pm - 8am)
 
-3.   Arrived at a weekend
+3.  Arrived at a weekend
 
-4.   Was admitted, or not
+4.  Was admitted, or not
 
 This last variable would become the outcome variable in our model. It was derived using two fields: *discharge destination* and *discharge status*. We categorised all patients with a *discharge destination* code indicating that they were moved to a ward, operating theatre, or special/high/intensive care unit as “admitted patients”. All other patients were provisionally classified as “not admitted”. If, however, a *discharge status* code indicated that a patient was discharged to Same Day Emergency Care; to an urgent treatment centre; or to the care of a GP; the *discharge status* code would trump any value given by *discharge destination*, and the patient would be categorised as "not admitted".
 
@@ -519,7 +519,7 @@ tmp |>
 
 ```
 
-## Panels by quarter 
+## Panels by quarter
 
 ```{r}
 #| label: fig-odds-quarter-panel
@@ -614,7 +614,7 @@ Text here
 
 #### Model performance measures
 
-The fitted model scored an AUROC of 0.866 and a Brier Score of 0.132. Performance measures were calculated out of (sub-) sample data, which should improve the robustness of these statistics.
+The fitted model scored an AUROC of 0.866 and a Brier Score of 0.132. Performance measures were calculated on out of (sub-)sample data, which should improve the robustness of these statistics.
 
 #### Additional model coefficients
 
