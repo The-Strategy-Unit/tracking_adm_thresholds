@@ -7,6 +7,8 @@ mod_run_3 <- readRDS(here::here("data", "251205_mod_run_3_sans_acuity.rds"))
 mod_run_4 <- readRDS(here::here("data", "251208_mod_run_4_covid.rds"))
 mod_run_5 <- readRDS(here::here("data", "251208_mod_run_5_interaction.rds"))
 mod_run_7 <- readRDS(here::here("data", "251211_mod_run_7_interaction.rds"))
+mod_run_8 <- readRDS(here::here("data", "251212_mod_run_8_interactions.rds"))
+mod_run_9 <- readRDS(here::here("data", "251215_mod_run_9_interaction.rds"))
 
 
 # STATS -------------------------------------------------------------------
@@ -16,23 +18,26 @@ head(mod_5_resample)
 # TEST ON OUT OF SAMPLE RECORDS:
 set.seed(1994)
 newdata <- df_var_ref_levels |> 
-  slice_sample(n = 1e6)
+  slice_sample(n = 2.5e6)
 
 mod_5_resample <- predict(mod_run_5, newdata, type ="response")
 mod_4_resample <- predict(mod_run_4, newdata, type ="response")
 mod_7_resample <- predict(mod_run_7, newdata, type ="response")
+mod_8_resample <- predict(mod_run_8, newdata, type ="response")
+mod_9_resample <- predict(mod_run_9, newdata, type ="response")
 
 
 tmp_stats <- tibble(
-  obs = as.factor(mod_run_7$y),
+  obs = as.factor(mod_run_9$y),
   # obs = df_var_ref_levels_sample_1m$admitted,
-  fit = 1 - fitted(mod_run_7), # predicted probabilities 1
+  fit = 1 - fitted(mod_run_9), # predicted probabilities 1
   # fit = fitted(mod_run_1) # predicted probabilities 1
   # OUT OF SAMPLE RECORDS:
-  obs_oos = newdata$admitted,
-  fit_oos = 1 - mod_7_resample
+  # obs_oos = newdata$admitted,
+  # fit_oos = 1 - mod_8_resample
 ) |> 
-  mutate(fit_oos = as.double(fit_oos))
+  # mutate(fit_oos = as.double(fit_oos)) |> 
+  identity()
 
 
 
@@ -44,10 +49,38 @@ tmp_stats |> roc_auc(obs_oos, fit_oos)
 # tmp_stats |> roc_auc(obs, fit, event_level = "second")
 # tmp_stats |> roc_auc(obs1, fit, event_level = "second")
 
+# PREDICT NUMBERS AFFECTED -------------------------------------------------------------------
+
+df_fixed_threshold <- df_var_ref_levels |> 
+  mutate(year_quarter = as_factor("2020 Q1"))
+
+# levels(df_var_ref_levels_sample$year_quarter)
+# levels(df_fixed_threshold$year_quarter)
+
+df_compare_predictions <- df_var_ref_levels |> 
+  mutate(pred = predict(mod_run_8, newdata = df_var_ref_levels, type ="response")) |> 
+  mutate(pred_cf = predict(mod_run_8, newdata = df_fixed_threshold, type ="response")) 
+  # mutate(pred_cf = predict(mod_run_8, newdata = df_fixed_threshold, type ="response")) 
+           
+df_compare_predictions |> 
+  # select(year_quarter, pred, pred_cf)
+  # mutate(across(starts_with("pred"), ~ if_else(. >= .5, 1, 0))) |> 
+  group_by(year_quarter) |> 
+  summarise(
+    att = n(), 
+    actual_adm = sum(as.integer(as.character(admitted))),
+    pred_adm = sum(pred),
+    pred_adm_cf = sum(pred_cf),
+    diff = sum(pred) - sum(pred_cf)
+    ) |> 
+  # print(n=50)
+  saveRDS(here("data", "260126_dfq_compare_numbers_adm.rds"))
+
+
 
 # COEFFS ------------------------------------------------------------------
 
-df_coeff_II <- mod_run_7 |>
+df_coeff_II <- mod_run_8 |>
   broom::tidy(parametric = TRUE) |>
   mutate(odds = exp(estimate)) |>
   mutate(lci = exp(estimate - 1.96 * std.error)) |>
@@ -57,6 +90,7 @@ df_coeff_II <- mod_run_7 |>
 df_coeff_II |> saveRDS(here("data", "251208_dfq_coeff_II.rds"))
 df_coeff_II |> saveRDS(here("data", "2512xx_dfq_coeff_II.rds"))
 df_coeff_II |> saveRDS(here("data", "251211_dfq_coeff_II.rds"))
+df_coeff_II |> saveRDS(here("data", "251212_dfq_coeff_II.rds"))
 
 # DIAGNOSES ---------------------------------------------------------------
 
