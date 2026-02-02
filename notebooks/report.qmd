@@ -1,6 +1,6 @@
 ---
 title: "Tracking Thresholds for<br>Hospital Admission Via Emergency Department"
-subtitle: "A Provider-level analysis<br><br><br>DRAFT REPORT<br>Autumn 2025"
+subtitle: "A Site-level Analysis<br><br><br>DRAFT REPORT<br>Autumn 2025"
 author:
   - name: Steven Wyatt
     email: swyatt@nhs.net
@@ -236,13 +236,13 @@ readRDS(here("data", "251110_nested.rds")) |>
 
 #### 2. Addressing incompleteness {#sec-incompleteness}
 
-At a site level, on average, 72% of records had missing values in *at least one* of the fields we had selected for our models. Since our intended regression models would not accept missing values, we had the choice to either: 1) exclude records with missing values; 2) impute missing values; or 3) assign missing values to an explicit missing category.[^3]
+At a site level, on average, 72% of records were missing a value in *at least one* of the fields we had selected for our models. Since our intended regression models would not accept missing values, we had the choice to either: 1) exclude records with missing values; 2) impute missing values; or 3) assign missing values to an explicit missing category.[^3]
 
 [^3]: This was only possible as the variables with missing values were exclusively categorical.
 
-We opted for the third approach, which allowed us to make use all the records in our study dataset. This approach especially useful when fitting models for smaller sites, where the number of records (n) we have for that site may not greatly exceed the number of predictor variables (p) that we wish to include in our regression models. As p –\> n, we get closer to an over-fitted, under-powered model, which will be more likely to produce inaccurate predictions and be incapable of distinguishing between genuine effect and random variation.
+We opted for the third approach, which allowed us to make use all the records in our study dataset without the need to employ additional (and potentially complex) imputation algorithms. This approach especially useful when fitting models for smaller sites, where the number of records (n) we have for that site may not greatly exceed the number of predictor variables (p) that we wish to include in our regression models. As p –\> n, we get closer to an over-fitted, under-powered model, which will be more likely to produce inaccurate predictions and be incapable of distinguishing between genuine effect and random variation.
 
-The approach we used also allows the model to make use of the missingness signals. Here, we haven't made the assumption that data were missing at random. We believed it was more likely that there was some systematic reason for the missingness. If, however, missingness was random, there is a risk that models we build could incorporate a false signal. This signal would compete with other variables for explanatory power, which may ultimately distort the coefficients of interest.
+The approach we used also allows the model to make use of the missingness signals. Importantly here, we haven't made the assumption that data were missing at random. We believed, instead, that the missingness was more likely to be due to failures of systems and processes. If, however, the missingness was random, there is a risk that models we build could incorporate a false signal. This signal would compete with other variables for explanatory power, which may ultimately distort the coefficients of interest.
 
 ### Addressing non-constant risks
 
@@ -252,7 +252,9 @@ In order to highlight results that may have been affected by non-constant risks,
 
 ## Additional data processing
 
-Further to the treatment of missing values, we chose to re-engineer the *primary diagnosis* and *chief complaint* variables. Both of these variables, unmodified, consisted of a large number of categories (9,800+ for diagnosis and 200+ for complaint). As implied in @sec-incompleteness, if we can substantially reduce the number of predictors whilst minimising the loss of information, we are likely to improve our models. Therefore, in each case, we grouped together less frequent conditions with the aid of a [3-tier hierarchy (the ECDS "Refset", created by NHSE)](https://digital.nhs.uk/data-and-information/data-collections-and-data-sets/data-sets/emergency-care-data-set-ecds/ecds-guidance). We conducted this grouping at the site level. As a consequence, groupings may vary, slightly, from site to site.
+Further to the treatment of missing values, we created a new *referral source* variable consisting of six levels, which combined categories from the *attendance source* field. We created 3 new binary variables indicating 1) whether the patient arrived at ED by ambulance (of any type); 2) whether the patient arrived at outside daytime hours (or 8pm - 8am); and 3) whether the patient arrived at a weekend.
+
+Importantly, we chose to re-engineer the *primary diagnosis* and *chief complaint* variables. Both of these variables, unmodified, consisted of a large number of categories (850+ for diagnosis and 180+ for complaint). As implied in @sec-incompleteness, if we can substantially reduce the number of predictors whilst minimising the loss of information, we are likely to improve our models. Therefore, for both *primary diagnosis* and *chief complaint*, we grouped together less frequent conditions with the aid of a [3-tier hierarchy (the "ECDS Refset", created by NHSE)](https://digital.nhs.uk/data-and-information/data-collections-and-data-sets/data-sets/emergency-care-data-set-ecds/ecds-guidance). We conducted this grouping at the site level. As a consequence, groupings may vary, slightly, from site to site.
 
 #### Diagnosis grouping
 
@@ -420,9 +422,17 @@ There were 13 sites that met these criteria. In these cases, we used chief compl
 
 ### Primary models
 
-We fitted a separate logistic generalised additive model (logistic GAM) for each site. As noted above, we worked with two specifications, identical other than in their use of either the re-engineered *diagnosis* or *complaint* variable.
+We fitted a separate logistic generalised additive model (logistic GAM) for each site.
 
-Otherwise, we included variables to adjust for casemix (as far as possible), namely: *age* (as a spline-based smooth) interacting with *sex*; *acuity*; whether the patient arrived by ambulance or not; and the *referral source*. In addition, we included time-related variables to control for weekday or weekend attendances, and whether the attendance was during the night (8 pm to 8 am).
+Our outcome variable was whether the patient was admitted, or not. Our variable of interest was the week that a patient attended.
+
+As noted above, we worked with two specifications, identical other than in their use of either the re-engineered *diagnosis* or *complaint* variable.
+
+Otherwise, we included variables to adjust for casemix (as far as possible), namely: *age* (as a spline-based smooth) interacting with *sex*; *acuity*; whether the patient arrived by ambulance or not; and the *referral source*. We incorporated variables to account for the ethnicity and socioeconomic status of patients.[^7]^,^ [^8] In addition, we included time-related variables to control for weekday or weekend attendances, and whether the attendance was during the night (8 pm to 8 am).
+
+[^7]: The ethnicity variable contained 18 categories which broadly corresponded to the [high-level groups used by the ONS in the 2021 census](https://www.ethnicity-facts-figures.service.gov.uk/style-guide/ethnic-groups/).
+
+[^8]: The Index of Multiple Deprivation quintile covering the area in which a patient lived was used a proxy for socioeconomic status.
 
 We intentionally omitted contextual factors such as the level of crowding and the inpatient occupancy at the time a patient was treated. Instead, we wanted to leave these factors as possible explanations for any changes seen in admission thresholds. If we were to adjust for such effects they would not (in theory) be visible in the time series.
 
@@ -432,11 +442,11 @@ We produced a second set of models with which we aimed to highlight results from
 
 Before fitting this second set of models, we created an additional binary variable which indicated whether the most influential predictor, *diagnosis* (or *complaint*, where applicable), was missing or not. This additional term and interaction terms created between this new variable and the *week* variable were the only differences between the primary and secondary model specifications.
 
-We reasoned that the coefficients of the interaction terms should indicate non-constant risks, if they are present.[^7] To help illustrate our reasoning, we will use @fig-nc-risk, which shows interaction coefficients (and their 80% confidence intervals), ordered by week, for the ED at St. George's Hospital (Tooting). On this plot we have also drawn horizontal lines, showing the median value of these interaction coefficients, and lines at twice and half the median value.[^8] These latter two lines are our upper and lower bounds: if an interaction estimate and its confidence interval is fully outside these bounds, then we judged that the term – and, at root, the proportion of missing diagnoses/complaints in that week – is contributing abnormal explanatory power to the model. In this case we would flag that week's result in our primary charts as being potentially problematic.
+We reasoned that the coefficients of the interaction terms should indicate non-constant risks, if they are present.[^9] To help illustrate our reasoning, we will use @fig-nc-risk, which shows interaction coefficients (and their 80% confidence intervals), ordered by week, for the ED at St. George's Hospital (Tooting). On this plot we have also drawn horizontal lines, showing the median value of these interaction coefficients, and lines at twice and half the median value.[^10] These latter two lines are our upper and lower bounds: if an interaction estimate and its confidence interval is fully outside these bounds, then we judged that the term – and, at root, the proportion of missing diagnoses/complaints in that week – is contributing abnormal explanatory power to the model. In this case we would flag that week's result in our primary charts as being potentially problematic.
 
-[^7]: There may also be non-constant risks, by week, if we were to look at acuity, for example. However, as diagnosis and complaint are likely to be the most influential variables when estimating odds of admission, and the recording of diagnosis and complaint appears to less consistent than for other variables, we have focussed our attention here.
+[^9]: There may also be non-constant risks, by week, if we were to look at acuity, for example. However, as diagnosis and complaint are likely to be the most influential variables when estimating odds of admission, and the recording of diagnosis and complaint appears to less consistent than for other variables, we have focussed our attention here.
 
-[^8]: The median value was used as a reference level, in preference to specific odds values, as this removed the risk of the reference category being abnormal.
+[^10]: The median value was used as a reference level, in preference to specific odds values, as this removed the risk of the reference category being abnormal.
 
 ```{r}
 #| label: fig-nc-risk
@@ -474,15 +484,15 @@ df_risk_plots <- readRDS(here("data", "251110_df_risk_plots.RDS"))
 
 In @fig-xmr, we have illustrated how the odds of admission vary over time with the aid of a particular type of Statistical Process Control (SPC) chart - the XMR chart. This chart has two components, the “X” plot and the “mR” plot:
 
--   The “X” plot (at the top of the chart) displays how the outcome of interest changes over time. Three horizontal lines represent the mean value and the upper and lower “control limits" (at 3 standard deviations from the mean value).[^9] These control limits define the expected range of variation for the process in question. If a point falls between the upper and lower control limits, then the result is considered within the bounds of natural - or “common cause” - variation, and the process is deemed stable. If, on the other hand, a point is outside the control limits, this indicates that the difference from the process mean should not be attributed to random variation. In SPC terms, there is a “special cause” for the variation.[^10]
+-   The “X” plot (at the top of the chart) displays how the outcome of interest changes over time. Three horizontal lines represent the mean value and the upper and lower “control limits" (at 3 standard deviations from the mean value).[^11] These control limits define the expected range of variation for the process in question. If a point falls between the upper and lower control limits, then the result is considered within the bounds of natural - or “common cause” - variation, and the process is deemed stable. If, on the other hand, a point is outside the control limits, this indicates that the difference from the process mean should not be attributed to random variation. In SPC terms, there is a “special cause” for the variation.[^12]
 
--   The “mR” (moving range) plot, is displayed below the X plot, on an identical horizontal axis. It shows whether the (absolute) difference between consecutive points on the X plot might be considered abnormal. Horizontal lines on the plot show the mean value and the upper control limit (at 3 standard deviations from the mean).[^11] A large change - positive or negative - between consecutive points in the X plot may result in an mR point that is above the upper control limit. In this case, the change in the outcome of interest (between consecutive points) is greater than might be expected for this process.
+-   The “mR” (moving range) plot, is displayed below the X plot, on an identical horizontal axis. It shows whether the (absolute) difference between consecutive points on the X plot might be considered abnormal. Horizontal lines on the plot show the mean value and the upper control limit (at 3 standard deviations from the mean).[^13] A large change - positive or negative - between consecutive points in the X plot may result in an mR point that is above the upper control limit. In this case, the change in the outcome of interest (between consecutive points) is greater than might be expected for this process.
 
-[^9]: To obtain control limits with the standard calculations, we must have values that are normally distributed. We therefore performed these calculations on the the raw model output values (log odds ratios), which are approximately normal, and only then transformed them.
+[^11]: To obtain control limits with the standard calculations, we must have values that are normally distributed. We therefore performed these calculations on the the raw model output values (log odds ratios), which are approximately normal, and only then transformed them.
 
-[^10]: According to **(Wheeler / Berwick? - Ask M.A.M. for reference)**, the presence of single data point displaying special cause variation signfies that a process shift has taken place. Moreover, specific patterns involving several common cause data points can also indicate a process shift. Whilst not covered in this document, when a process shift has occured, the control limits are often re-calibrated. We suggest that, if there were to be a re-calibration of the SPC chart
+[^12]: According to **(Wheeler / Berwick? - Ask M.A.M. for reference)**, the presence of single data point displaying special cause variation signfies that a process shift has taken place. Moreover, specific patterns involving several common cause data points can also indicate a process shift. Whilst not covered in this document, when a process shift has occured, the control limits are often re-calibrated. We suggest that, if there were to be a re-calibration of the SPC chart
 
-[^11]: Note that differences are absolute, so there is no lower control limit.
+[^13]: Note that differences are absolute, so there is no lower control limit.
 
 ```{r}
 #| label: fig-xmr
@@ -528,9 +538,9 @@ b <- df_xmr_plots$plot_mr[[7]]+
 a/b
 ```
 
-Returning to our specific case, XmR charts may prove useful if we wish to see whether an intervention, or series of interventions,[^12] has had a significant and sustained influence on admission thresholds.
+Returning to our specific case, XmR charts may prove useful if we wish to see whether an intervention, or series of interventions,[^14] has had a significant and sustained influence on admission thresholds.
 
-[^12]: Such as we might see as a consequence of the NHS neighbourhood plan
+[^14]: Such as we might see as a consequence of the NHS neighbourhood plan
 
 Looking at @fig-xmr, which shows St George's Hospital, it appears (from the X plot) that the casemix-adjusted odds of admission were relatively consistent from April until the last week in September. At this point, the odds of admission rise sharply (which corresponds to a fall in the threshold for admission). What should we read into this?
 

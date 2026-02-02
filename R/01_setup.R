@@ -2,6 +2,8 @@
 # Load packages and establish DB connection. 
 # Note: you will be prompted for a password via pop-up.
 
+library("gt")
+library("gtExtras")
 library("DBI")
 # library("pak")
 library("here")
@@ -11,6 +13,7 @@ library("broom")
 library("dplyr")
 library("purrr")
 library("furrr")
+library("readr")
 library("tidyr")
 library("tibble")
 library("forcats")

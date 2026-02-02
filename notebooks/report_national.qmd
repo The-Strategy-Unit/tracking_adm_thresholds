@@ -1,0 +1,1451 @@
+---
+title: "Hospital Admission Thresholds Within Emergency Departments"
+subtitle: "DRAFT REPORT<br>Spring 2026"
+author:
+  - name: Steven Wyatt
+    email: swyatt@nhs.net
+    corresponding: TRUE
+    affiliation: The Strategy Unit
+  - name: Andrew Jones
+    email: swyatt@nhs.net
+    corresponding: FALSE
+# date: 2024-11-29
+format:
+  html:
+    html-table-processing: none
+    # code-fold: true
+    # code-tools: true
+    embed-resources: true
+    grid:
+      margin-width: 240px
+  pdf: default
+reference-location: margin
+citation-location: margin
+toc: true
+toc-title: Contents
+toc-location: left
+# theme: journal
+fig-cap-location: top
+number-sections: false
+# backgroundcolor: '#FFE0B5'
+title-block-banner: '#f8be06'
+title-block-banner-color: '#242322'
+# mainfont: Gill Sans MT
+# mainfont: Helvetica
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r}
+#| label: setup
+#| include: false
+
+library("gt")
+library("here") 
+library("arrow")
+library("dplyr")
+library("purrr")
+library("readr") 
+library("tidyr")
+library("tibble")
+library("tsibble")
+library("forcats")
+library("ggplot2") 
+library("janitor")
+library("stringr")
+library("gtExtras") 
+library("lubridate")
+
+source(here("R", "funs.R"))
+
+# CUT OFF DATE IS MOST RECENT SUNDAY MINUS THREE WEEKS:
+param_date_cutoff <- set_cutoff_date(min_buffer_days = 21)
+
+
+plot_condition_over_time <- function(df) {
+  df |>
+    ggplot(aes(as_date(year_quarter), n, group = diag, col = diag)) +
+    geom_line() +
+    geom_point(size = 0.6) +
+    geom_blank(aes(y = 0)) +
+    facet_wrap(vars(diag), scales = "free_y", labeller = label_wrap_gen(width = 30)) +
+    theme_minimal() +
+    theme(
+      strip.text = element_text(size = 8.5),
+      legend.position = "none",
+      axis.text = element_text(size = 7),
+      axis.title = element_text(size = 9),
+    )+
+     labs(x = "\nDate (quarter commencing)" , y = "Number of attendances\n")+
+  scale_y_continuous(labels = scales::comma)
+}
+
+
+plot_additional_coeffs <- function(df) {
+  df |> 
+       ggplot() +
+  geom_hline(yintercept = 1, lty = "dashed", colour = "grey20", alpha = 0.5) +
+  geom_pointrange(aes(reorder(term, odds), odds, ymin = lci, ymax = uci),  stroke = NA) +
+  theme_minimal() +
+  coord_flip() +
+  scale_y_log10() +
+  theme(
+     axis.title.x = element_text(size = 9),
+    axis.title.y = element_blank(),
+    legend.position = "none"
+  )
+}
+```
+
+# Executive Summary
+
+Most patients who are admitted to hospital in an emergency will first pass through an Emergency Department (ED). Decisions about whether to admit a patient fall to ED clinicians. A clinician will make a decision having considered the needs of the patient and the resources available - within and outside of hospital - to manage the patient’s needs effectively and promptly. Collectively, these decisions, which we might think of as defining a threshold for admission, influence the rate of emergency admissions within a local area.
+
+Admission rates, in turn, influence bed occupancy rates. Average bed occupancy rates in England have hovered around 91% for the last few years, much higher than is generally regarded as optimal for patient safety and the efficient management of patient flow. If the Neighbourhood NHS programme is successful in shifting care from hospital to community settings, then we might expect the pressure on hospital beds to decrease. There is a concern, however, that spare capacity will lead to an uncontrolled lowering of admission thresholds, and that hospital beds freed up by community services will be filled by patients who would not otherwise have been admitted. This would undermine efforts to redirect resources from hospital to community settings.
+
+In this report, we address two questions relating to clinical admission thresholds within emergency departments. To set the scene, we examine whether admission thresholds have changed in recent years. In the second part of the report, we examine the feasibility of routinely tracking these thresholds within individual emergency departments, so that local health systems can stay informed about this important factor.
+
+**Key findings and implications**
+
+Our analysis covers attendances taking place between April 2019 and March 2025. We examined a broadly representative subset of 16 Type 1 (consultant-led 24/7) emergency departments in England. We controlled for a patient’s age, sex, ethnicity, deprivation, acuity, diagnosis, arrival mode, referral source, and time (day of the week and hour) of attendance.
+
+An earlier study found that admission thresholds increased steadily and substantially between 2010 and 2016. This new analysis suggests that these strong secular trends appear to have ended by 2019, and have been replaced by modest fluctuations in thresholds, without a clear overall direction.
+
+Having adjusted for clinical casemix, we find that admission thresholds fell moderately but abruptly at the start of the COVID-19 pandemic, returning to pre-pandemic levels by April 2022. During the pandemic period, patients were approximately 10% more likely to be admitted, on average, than patients with similar needs presenting at other times.
+
+Either side of the COVID-19 pandemic and recovery period, we found that admission thresholds were more stable. Most changes that took place quarter-on-quarter may well be explained by chance alone, although our results suggest some systematic, non-seasonal patterns. Thresholds were highest in the months immediately before the pandemic and during the period from July 2022 to June 2023. Thresholds then fell until March 2024 before rising again until December 2024. Although the odds of admission varied only modestly outside the pandemic and recovery period, the changes in this time are likely to have materially influenced admission decisions for tens of thousands of patients each year.
+
+Further work would be required to understand whether these modest but nonetheless material changes in admission thresholds were random, intentional, or an organic response to changes in contextual factors such as bed availability.
+
+If healthcare systems are to succeed in redirecting resources from hospital to community settings, they will likely need to gain greater control over admission thresholds. Our work in the second part of this report suggests that it may be feasible to design statistical models and associated tools to allow health systems to track casemix-adjusted admission thresholds in individual EDs. Each department-level model would have to be tuned to take account of the quality, coverage, and consistency of the department’s Emergency Care Data Set submissions. The models we propose are moderately complex, and care would be required to ensure that users interpret the results appropriately. Users of these tools would likely require training and initial tailored support. Discussions with potential users would help guide decisions about the value and nature of any tool development and deployment.
+
+# Part 1: Changes in Thresholds for Hospital Admission Via Emergency Department
+
+## 1.1 Introduction
+
+In this section of the report, we explore whether and how admission thresholds within emergency departments changed between April 2019 and March 2025. 
+
+The clinical characteristics, or casemix, of patients attending emergency departments is highly heterogeneous. Some patients present with needs that almost always require admission (e.g., sepsis), whilst others (e.g., those with an ankle sprain) are very rarely admitted. Changes in the mix of patients over time, might explain why more patients are admitted in some periods than in others. In this project, the interest is in changes in admission thresholds over and above these casemix effects.
+
+[Earlier work](https://emj.bmj.com/content/34/12/773) explored trends in casemix-adjusted admission thresholds between 2010 and 2016, and concluded that these thresholds increased substantially and steadily over this period. 
+
+Contextual factors, such as ED crowding and inpatient bed occupancy might also influence whether a patient is admitted from ED to hospital. [A 2022 study](https://emj.bmj.com/content/39/3/174) found that admission decisions were modestly associated with these contextual factors, and so should be considered as potential explanations for any observed change in casemix-adjusted admission thresholds.
+
+The period examined in this analysis includes the COVID-19 pandemic and associated ‘lock-down’ measures. The unprecedented nature of these events led to many simultaneous changes in patient behaviours, patient needs, health service availability and clinical practice. Interpreting changes such as admission thresholds in this context is therefore challenging, and results covering the pandemic period should consequently be treated with caution and care.
+
+## 1.2 Methods
+
+### Data source
+
+This analysis relied on data from the Emergency Care Data Set (ECDS). Each ECDS record represents a patient attendance at an urgent or emergency care department. We selected the subset of records coded as unplanned attendances at Type 1 emergency departments (EDs), with an arrival date between 1st April 2019 and 31st March 2025 (inclusive).
+
+We removed records where the patient left the ED before treatment was provided; where the patient died during an attendance; and where the individual was found to be dead on arrival at the ED.
+
+### Data quality
+
+Whilst the ECDS is recognised as a high-quality data source, there is yet considerable variation in data quality, both across provider sites and over time. If overlooked, this variation could adversely affect the validity of our results.
+
+We were particularly concerned, here, about the completeness and consistency of variables that indicate the clinical features and severity of a patient's condition. These fields - *diagnosis*, *chief complaint*, and *acuity* - are likely to be the strongest predictors of admission and therefore have the greatest influence on our results. If we were to use a dataset with sizeable inconsistency in the coding of these fields (non-constant risks) over time, this could distort, and even invalidate, our results. To increase the chances that our findings would be valid, we conducted the analysis on records from a sample of sites whose data met our quality requirements.
+
+### Selective sampling
+
+Whilst sampling should improve the validity of our results, we can only make *general statements* about changes in admission thresholds over time if our sample of sites - and the profile of patients attending these sites - is *representative* of EDs nationwide. In other words, on aggregate, the sites and patients covered by our sample should have similar characteristics to those across England.
+
+There is a trade-off to be made here, however. The larger our sample of sites, the more likely it is to be representative of the population of sites, and the more likely it will be that our findings are generalisable. However, the larger we make our sample, the more we compromise on data quality, which will likely decrease the validity of our results.
+
+Details of our approach to this trade-off, and measures of representation, are given in the sections below.
+
+We identified 138 sites that submitted data to ECDS and that had a consistent *site code* throughout the study period (2019/20 to 2024/25). These 138 EDs will represent the total population of providers that we might have used in this analysis, had data quality been universally high.
+
+As explained above, we viewed completeness and consistency across *diagnosis*, *acuity*, and *chief complaint* fields as being particularly important to this analysis. From the population of 138 sites, we found 20 that had completeness rates for these variables that exceeded 75% in every quarter of the period studied.
+
+Aiming for yet greater consistency, we excluded a further 3 sites (from the initial selection of 20) where completion of the *diagnosis* field decreased, on average, by more than 3% per year. And we excluded one further site that showed two sizeable step changes in completion of the *diagnosis* field. This left us with a working sample of 16 sites.
+
+As a final step, it was necessary to verify that our intended outcome variable (whether the patient was admitted or not (more details in @sec ... ) was complete throughout the study period, for each site in the working sample. At the same time, we established that any change in the crude rate of admission, by site, did not exceed +/-10% from any one quarter to the next. (Such swings might have been indicative of a data quality issue.) However, each of the 16 sites in our working sample met these criteria.
+
+#### Sites in the sample
+
+The 16 EDs meeting the data quality criteria above are named in @tbl-sample-sites. Data from these sites, which covers more than 7 million attendances over 6 years, will be used in the following analysis.
+
+@tbl-representation shows how the characteristics of EDs in the sample compare to the characteristics of EDs nationally. We see that the sample of EDs is slightly skewed towards smaller sites, and there is no representation of sites in London or North West England.[^1] However, the casemix of patients attending the EDs in our sample was broadly representative of the casemix of all patients who attended EDs over the period.[^2]
+
+[^1]: For admissions via a hospital emergency department
+
+[^2]: In the case of the text and graphics presented in this document, the computer code was executed on November 10th 2025, which makes the last complete week the 13-19th October 2025.
+
+::: panel-tabset
+## Sites in sample
+
+```{r}
+#| label: tbl-sample-sites
+#| tbl-cap: "A list of sites whose data quality met our criteria for this analysis."
+#| echo: false
+#| message: false
+#| column: page
+
+
+readRDS(here("data", "251204_df_sample_sites.rds")) |>
+  mutate(trust_name = str_remove_all(trust_name, " NHS Foundation Trust| NHS Trust")) |> 
+  mutate(trust_name = str_replace(trust_name, "Lynn,", "Lynn")) |> 
+   gt() |>
+  cols_label(
+    site_name = "Site Name",
+    trust_name = "Trust Name",
+    .fn = md
+  ) |> 
+  fmt_auto() |>
+  tab_style(
+    style = list(
+      cell_text(weight = "bold")
+    ),
+    locations = cells_column_labels(c(site_name, trust_name))
+  ) |>
+  tab_options(
+    data_row.padding = px(1),
+    table.font.size = "small"
+  )
+
+```
+
+## How representative is this sample?
+
+```{r}
+#| label: tbl-representation
+#| tbl-cap: "Table comparing selected characteristics of the sample of sites used in this analysis with the characteristics of all qualifying sites across England."
+#| echo: false
+#| message: false
+#| column: page
+
+readRDS(here("data", "251204_table_representation.rds")) |>
+  ungroup() |> 
+  mutate(variable = str_replace_all(variable, "_", " ")) |> 
+  mutate(variable = str_replace(variable, "region ", "")) |> 
+  mutate(variable = str_replace(variable, " commissioning", "")) |> 
+  mutate(variable = case_when(
+    str_detect(variable, "arriv") ~ "arrival by ambulance",
+    str_detect(variable, "depriv") ~ "most deprived 20%",
+    T ~ variable
+  )) |> 
+    gt() |> 
+  opt_row_striping(row_striping = F) |> 
+  fmt_auto() |> 
+  cols_label(
+    rep_diff = "Representation:<br>Sample vs Pop.",
+    .fn = md
+  ) |> 
+  tab_style(
+    style = list(
+      cell_text(transform = "capitalize", weight = "bold")
+    ),
+    # different location
+    # locations = cells_column_labels(everything())
+    locations = cells_column_labels(1:3)
+  ) |> 
+  fmt_percent(rows = c(2:24), decimals = 0) |>
+  fmt_percent(columns = 4, decimals = 0) |>
+  # sub_values(
+  #   rows = 1,  fn = function(x) x >= 0 & x < 1,
+  #            replacement = "") |> 
+  tab_row_group(
+    label = "Patient demographics:",
+    rows =  str_detect(variable, "most depriv|region")
+  ) |> 
+  tab_row_group(
+    label = "Patient case-mix:",
+    rows =  str_detect(variable, "age|arrival|admitted")
+  ) |> 
+  tab_row_group(
+    label = "Site-related stats (2023/24):",
+    rows =  str_detect(variable, "att|also|4h|12h")
+  ) |> 
+  tab_row_group(
+    label = "",
+    rows =  str_detect(variable, "n sites|23")
+  ) |>
+  tab_style(
+    style = cell_text(weight = "bold"),
+    locations = cells_row_groups(groups = c(1, 2, 3, 4))
+  ) |> 
+  gt_highlight_cols(sample, fill = "grey", alpha = 0.1) |> 
+  tab_options(
+    data_row.padding = px(1),
+    table.font.size = "small"
+  )
+
+  
+
+```
+:::
+
+### Data processing
+
+#### Addressing incompleteness
+
+About 13% of records in the sample were missing a value in *at least one* of the fields we had planned to use in our model. Since our intended logistic regression model would not accept missing values, we had the choice to either: 1) exclude records with missing values; 2) impute missing values; or 3) assign missing values to an explicit missing category.[^3]
+
+[^3]: This was only possible as the variables with missing values were exclusively categorical.
+
+We opted for the third approach, which allowed us to make use all the records in our study dataset without the need to employ an additional (and potentially complex) imputation algorithm. This approach also allows the model to make use of the missingness signals. Importantly here, we haven’t made the assumption that data were missing at random. We believed, instead, that the missingness was more likely to be due to failures of systems and processes.[^4]
+
+[^4]: Missing diagnoses are included in this 60%.
+
+#### Creating new variables
+
+Further to the treatment of missing values, we chose to synthesise a variable that captured the clinical features of a patient's condition. The reasons for this were largely related to the fact that the *primary diagnosis* variable, unmodified, consisted of a large number of categories (9,800+), which would translate into a similarly large number of predictor variables. As this would likely create various problems at the modelling stage, we aimed to substantially reduce the number of predictors we would pass to the model whilst minimising the loss of information.
+
+To produce the new variable, we used information from the *diagnosis* and *chief complaint* variables, together with the 3-tier diagnosis hierarchy from the “ECDS Refset MAX Specification”, created by NHSE.
+
+We first created a frequency table of primary diagnoses in our sample, and recorded the 30 most frequent SNOMED codes for use in our new variable. To this list of 30, we added two SNOMED diagnosis codes related to acute COVID-19 infection.[^5] These were equivalent to Level 3 of the diagnosis hierarchy (from the ECDS Refset), which gives the most precise details of a clinical condition.
+
+[^5]: Note that, unmodified, the detail given in the chief complaint field is equivalent to the second level of the 3-tier hierarchy, so we only have two levels in this case.
+
+Having removed activity with these primary diagnosis codes from our sample, we then identified the 20 most frequent chief complaint codes in the remaining data, and recorded these. These chief complaint codes were equivalent to Level 2 of the diagnosis hierarchy.
+
+We mapped the remaining chief complaint codes to the ECDS Refset diagnosis table, and grouped conditions at the highest (most general) level of the diagnosis hierarchy (Level 1). Whilst there were 36 instances where the SNOMED code was labelled as “deprecated” when mapped to the Refset, we were able to categorize these manually, with the aid of archived material.
+
+We therefore captured the clinical condition (where given) of all patients in the sample, at 3 Levels of detail, in a total of 66 categories. On examining the trends for these 66 categories, we saw evidence of codes being re-classified or dropped entirely. We attempted to reconcile these discontinuities, by:
+
+-   Uniting different codes for urinary tract infections
+
+-   Uniting different codes for injuries of the upper, and lower, extremities
+
+-   Moving "Lower limb pain" and "Upper limb pain" from Level 2 to Musculoskeletal conditions in Level 1.
+
+-   Moving "Drug and alcohol abuse" from Level 1 to "Substance misuse" in Level 2.
+
+These changes left us with 62 categories indicating the clinical features of a patient’s condition. The proportion of attendances covered at each level of the diagnosis hierarchy is shown in @tbl-diag-propos, whilst the 62 categories, and plots of their appearance over time, can be seen in @fig-diag-ts-l3, @fig-diag-ts-l2, and @fig-diag-ts-l1 .
+
+<br>
+
+::: panel-tabset
+## Coverage
+
+```{r}
+#| label: tbl-diag-propos
+#| echo: false
+#| message: false
+#| warning: false
+#| fig-cap: "The proportion of attendances in the sample that is covered by each level of the ECDS Refset diagnosis hierarchy.<br><br>"
+#| column: page
+#| fig-width: 12
+#| fig-asp: 0.618
+#| out-width: "85%"
+
+df_preplot_condition_over_time <- readRDS(here("data", "251211_dfq_condition_over_time.rds")) |> 
+  mutate(data = map(data, function(df){
+    df |> 
+       mutate(diag = str_remove(diag, "l[0-9]{1}_")) |> 
+  mutate(diag = str_replace_all(diag, "_", " ")) |> 
+  mutate(diag = str_to_title(diag))
+    
+  }))
+
+df_preplot_condition_over_time |> 
+  mutate(precision = case_when(
+    level == "3" ~ "High",
+    level == "2" ~ "Medium",
+    level == "1" ~ "Low",
+    T ~ as.character(level)
+  )) |> 
+  select(level, precision, p) |> 
+  gt() |> 
+   cols_label(
+    level = "Level of grouping",
+    precision = "Specificity of label",
+    p = "% sample covered",
+    .fn = md
+  ) |> 
+  fmt_auto() |> 
+  fmt_percent(columns = p, decimals = 1) |> 
+    tab_options(
+    data_row.padding = px(1)
+    #table.font.size = "small"
+  )
+
+```
+
+## Condition Level 3
+
+```{r}
+#| label: fig-diag-ts-l3
+#| echo: false
+#| message: false
+#| warning: false
+#| fig-cap: "<br><br>"
+#| column: page
+#| fig-width: 12
+#| fig-asp: 0.618
+#| out-width: "85%"
+
+
+
+df_preplot_condition_over_time$data[[1]] |> 
+  plot_condition_over_time()
+ 
+
+```
+
+## Condition Level 2
+
+```{r}
+#| label: fig-diag-ts-l2
+#| echo: false
+#| message: false
+#| warning: false
+#| fig-cap: "<br><br>"
+#| column: page
+#| fig-width: 12
+#| fig-asp: 0.618
+#| out-width: "85%"
+
+
+df_preplot_condition_over_time$data[[2]] |> 
+  plot_condition_over_time()
+
+```
+
+## Condition Level 1
+
+```{r}
+#| label: fig-diag-ts-l1
+#| echo: false
+#| message: false
+#| warning: false
+#| fig-cap: "  <br><br>"
+#| column: page
+#| fig-width: 12
+#| fig-asp: 0.618
+#| out-width: "85%"
+
+
+df_preplot_condition_over_time$data[[3]] |> 
+  plot_condition_over_time()
+
+```
+:::
+
+Moving on to other variables, we created new levels of the acuity variable – merging two or more of the original levels – for 3 EDs where we observed erractic recording of acuity levels over time.
+
+We created a new *referral source* variable consisting of six levels, which blended categories from the *attendance source* field.
+
+Finally, we created 4 new binary variables indicating whether the patient:
+
+1.  Arrived at ED by ambulance (of any type)
+
+2.  Arrived at night (which we took to be 8pm - 8am)
+
+3.  Arrived at a weekend
+
+4.  Was admitted, or not
+
+This last variable would become the outcome variable in our model. It was derived using two fields: *discharge destination* and *discharge status*. We categorised all patients with a *discharge destination* code indicating that they were moved to a ward, operating theatre, or special/high/intensive care unit as “admitted patients”. All other patients were provisionally classified as “not admitted”. If, however, a *discharge status* code indicated that a patient was discharged to Same Day Emergency Care; to an urgent treatment centre; or to the care of a GP; the *discharge status* code would trump any value given by *discharge destination*, and the patient would be categorised as "not admitted".
+
+### Model specification
+
+We fitted a logistic generalised additive model (logistic GAM) to the processed data, with our binary outcome variable being whether the patient was admitted or not. Our variable of interest was the quarter of the financial year in which a patient attended. We also included variables to adjust for casemix (as far as possible), namely: *age* (as a spline-based smooth) interacting with *sex*; *acuity*; the new, primary diagnosis variable; whether the patient arrived by ambulance or not; and the *referral source*. We incorporated variables to account for the ethnicity and socioeconomic status of patients.[^6]^,^ [^7] In addition, we included time-related variables to control for weekday or weekend attendances, and whether the attendance was during the night (8 pm to 8 am). The ED site was the final variable in the model.
+
+[^6]: Missing complaints are included here.
+
+[^7]: The ethnicity variable contained 18 categories which broadly corresponded to the [high-level groups used by the ONS in the 2021 census](https://www.ethnicity-facts-figures.service.gov.uk/style-guide/ethnic-groups/).
+
+As graphical evidence indicated that different sites might interpret a patient's acuity level in different ways (and the acuity variable would likely be highly influential), we included an interaction between ED site and acuity. For similar reasons, we also included an interaction between ED site and the "NA complaint" variable.
+
+We intentionally omitted contextual factors such as the level of crowding and the inpatient occupancy at the time a patient was treated. Whilst these variables are challenging to engineer for an extended time period, we also wanted to leave these factors as possible explanations for any changes seen in admission thresholds **(less relevant excuse for quarterly data??)**. If we were to adjust for such effects they would not (in theory) be visible in the time series.
+
+We fitted the model to a random sub-sample of 2.5 million records.
+
+### Reproducibility
+
+The computer code used in this analysis can be found a [GitHub repository](https://github.com/The-Strategy-Unit/tracking_adm_thresholds) (permissions currently required).
+
+## 1.3 Results
+
+The aim of this analysis was to describe national-level changes in threshold for hospital admission via ED. We used a logistic GAM to estimate the casemix-adjusted odds of admission over time. Model coefficients corresponding to each quarter of each financial year in the study period are the values of interest. We show these values, and their 95% confidence intervals, in @fig-odds-quarter. The reference level (with an odds ratio of 1) is the first quarter in the study period: Quarter 1 of 2019/20.
+
+We might divide the time span covered by @fig-odds-quarter into three distinct periods: 1) the pre-pandemic period; 2) the pandemic (and subsequent recovery) period; and 3) the post-pandemic period. The most prominent feature of the plot is the rise in the casemix-adjusted odds of admission during, and in the wake of, the pandemic. The results indicate that the odds of a particular patient with a specific condition being admitted in this period were generally 10-20% higher than at other times.
+
+If we look beyond the obvious rise during the pandemic, these estimates suggest the odds of admission immediately prior to the pandemic were similar to the odds in the post-pandemic period. If we compare quarter with quarter, across the pre- and post-pandemic periods ( as in @fig-odds-quarter-panel ), few of the differences we see are statistically significant. However, the final column in @tbl-numbers suggests variation in admission thresholds over the period studied will have influenced the trajectory of many thousands of ED patients in our sample, and tens of thousands nationally.
+
+<!--#  Throughout, we see evidence of a seasonal pattern, with admission generally more likely in the final quarter of each financial year (i.e. between January and March), than it is in the preceding quarters. -->
+
+Values of the other (parametric) model coefficients, and model performance statistics, are given in @sec-appendix.
+
+::: panel-tabset
+## Coefficients of year-quarter
+
+```{r}
+#| label: fig-odds-quarter
+#| echo: false
+#| message: false
+#| warning: false
+#| fig-cap: "Changes in the casemix-adjusted odds of admission via ED, between 2019/20 Quarter 1 and 2024/25 Quarter 4.<br><br>"
+#| column: page
+#| fig-width: 12
+#| fig-asp: 0.618
+#| out-width: "85%"
+
+# readRDS(here("data", "251204_dfq_coeff_II.rds")) |>
+# readRDS(here("data", "2512xx_dfq_coeff_II.rds")) |>
+#readRDS(here("data", "251208_dfq_coeff_II.rds")) |>
+#readRDS(here("data", "2512yy_dfq_coeff_II.rds")) |>
+# readRDS(here("data", "251211_dfq_coeff_II.rds")) |>
+
+coeffs <- readRDS(here("data", "251212_dfq_coeff_II.rds"))
+
+tmp <- coeffs  |>
+  filter(str_detect(term, "year")) |>
+  mutate(term = str_remove(term, "year_quarter")) |>
+  mutate(row = row_number()) |>
+  mutate(date = case_when(
+    str_detect(term, "Q1") ~ make_date(year = as.numeric(str_sub(term, 1, 4)) -1, 04, 01),
+    str_detect(term, "Q2") ~ make_date(year = as.numeric(str_sub(term, 1, 4)) -1, 07, 01),
+    str_detect(term, "Q3") ~ make_date(year = as.numeric(str_sub(term, 1, 4)) -1, 10, 01),
+    str_detect(term, "Q4") ~ make_date(year = str_sub(term, 1, 4), 01, 01) 
+  )) |> 
+  add_row(
+    term = NA_character_,
+    odds = 1,
+    lci = NA_real_,
+    uci = NA_real_, 
+    row = NA_real_,
+    date = as_date("2019-04-01")
+    ) 
+  
+tmp |> 
+  select(-c(term, row)) |> 
+  ggplot() +
+  # geom_hline(yintercept = 1, lty = "dashed", colour = "grey20", alpha = 0.5) +
+  geom_point(aes(date, odds), col = "grey40", stroke = NA, size = 2) +
+  #  geom_rect(xmin = as_date("2020-03-01"), xmax = as_date("2022-03-01"), ymin = log(0.88), ymax = log(1.23),
+  #   fill = "darkolivegreen1",
+  #   # fill = "green",
+  #   alpha = 0.01
+  # )+
+  #  geom_rect(xmin = as_date("2019-01-01"), xmax = as_date("2022-03-01"), ymin = log(0.95), ymax = log(1.0125),
+  #   fill = "darkolivegreen1",
+  #   # fill = "green",
+  #   alpha = 0.01
+  # )+
+  #  geom_rect(xmin = as_date("2022-03-01"), xmax = as_date("2025-04-01"), ymin = log(0.95), ymax = log(1.0125),
+  #   fill = "darkolivegreen1",
+  #   # fill = "green",
+  #   alpha = 0.01
+  # )+
+  geom_text(
+    x = as_date("2021-02-01"),
+    y = log(1.08), 
+    label = "← pandemic, and recovery period →→→→→",
+    size = 4,
+    alpha = .04, 
+    # colour = "darkolivegreen3"
+    )+
+  geom_pointrange(aes(date, odds, ymin = lci, ymax = uci), col = "grey40", stroke = NA, alpha = 1) +
+  # geom_smooth(aes(date, odds), se = F, linewidth = 3, alpha = .02)+
+#  stat_smooth(aes(date, odds), geom = "line", se = F, linewidth = 3, alpha = .05, span = 0.47)+
+  theme_minimal() +
+  # coord_flip() +
+  scale_y_log10(
+    limits = c(0.87, 1.24)
+    # breaks = c(0.9, 1, 1.1),
+    # labels = c(
+    #   # "Half\nas likely in\n2023/24",
+    #   # "Equally\nas likely in\n2023/24",
+    #   # "2x\nas likely in\n2023/24",
+    #   "90%\nas likely as\nav. occupancy",
+    #   "Equally\nas likely as\nav. occupancy",
+    #   "110%x\nas likely as\nav. occupancy"
+    # )
+  ) +
+  scale_x_date(
+    breaks = seq(as.Date("2019-04-01"), as.Date("2025-04-01"), by = "1 year"),
+    # date_breaks = "1 year",
+    # date_minor_breaks = "3 month",
+    date_labels = "%b %Y"
+   )+
+  theme(
+    axis.text = element_text(size = 10),
+    axis.title = element_text(size = 12),
+    plot.margin = margin(.2,.5,.2,.2, "cm")
+    # plot.margin = margin(5, 20, 5, 5),
+    # panel.grid.minor = element_blank(),
+  ) +
+  labs(
+    y = "Casemix-adjusted odds of admission (log scale)\nReference category: 2019 Q1\n",
+    x = "\nDate (quarter commencing)" 
+  ) 
+
+```
+
+## Panels by quarter
+
+```{r}
+#| label: fig-odds-quarter-panel
+#| echo: false
+#| message: false
+#| warning: false
+#| fig-cap: "Changes in the casemix-adjusted odds of admission via ED, between 2019/20 and 2024/25. Results for each quarter are shown in separate panels to facilitate comparison.<br><br>"
+#| column: page
+#| fig-width: 12
+#| fig-asp: 0.618
+#| out-width: "85%"
+
+tmp |> 
+  mutate(quarter = (str_sub(term, -1 ))) |> 
+  mutate(quarter = if_else(is.na(quarter), "1", quarter)) |> 
+  mutate(quarter = str_c("Quarter ", quarter)) |> 
+  mutate(covid = if_else(
+    between(date, as_date("2020-03-15"), as_date("2022-03-15")), 
+    1, 0)) %>%
+  ggplot() +
+  geom_rect(xmin = as_date("2020-03-15"), xmax = as_date("2022-03-15"), ymin = log(0.92), ymax = log(1.11),
+            # fill = "darkolivegreen1",
+            fill = "grey",
+            alpha = 0.03
+  )+
+  # geom_rect(xmin = as_date("2022-03-01"), xmax = as_date("2025-04-01"), ymin = log(0.95), ymax = log(1.0125),
+  #           fill = "darkolivegreen1",
+  #           # fill = "green",
+  #           alpha = 0.01
+  # )+
+  geom_pointrange(
+    aes(date, odds, ymin = lci, ymax = uci, colour = quarter),
+    stroke = NA) +
+  geom_point(aes(date, odds, 
+                 # shape = quarter,
+                 colour = quarter
+                 ), stroke = NA, size = 3) +
+  geom_point(
+    data = . %>% filter(covid == 1),
+    aes(date, odds, 
+        # shape = quarter
+        ), colour = "grey75", stroke = NA, size = 3) +
+  # theme_minimal() +
+  geom_pointrange(
+    data = . %>% filter(covid == 1),
+    aes(date, odds, ymin = lci, ymax = uci),
+    colour = "grey75",
+    stroke = NA
+    ) +
+  geom_text(
+    x = as_date("2020-12-01"),
+    y = log(1.08), 
+    label = " pandemic →",
+    size = 3,
+    alpha = .7, 
+    colour = "grey"
+    )+
+  theme_bw() +
+  # coord_flip() +
+  scale_y_log10(
+    limits = c(0.87, 1.24)
+  ) +
+  scale_x_date(
+    # date_breaks = "2 year",
+    breaks = seq(as.Date("2019-04-01"), as.Date("2025-04-01"), by = "2 year"),
+    date_labels = "%b '%y"
+  )+
+  theme(
+    axis.text = element_text(size = 9),
+    axis.title = element_text(size = 12),
+    axis.ticks = element_blank(),
+    legend.position = "none",
+    strip.text = element_text(size = 12),
+    panel.spacing = unit(2, "lines"),
+    plot.margin = margin(.2,.5,.2,.2, "cm")
+  ) +
+  labs(
+    y = "Casemix-adjusted odds of admission (log scale)\nReference category: 2019 Q1\n",
+    x = "\nDate (quarter commencing)" 
+  ) +
+  facet_wrap(vars(quarter), nrow = 1)
+
+
+```
+
+## Numbers affected
+
+```{r}
+#| label: tbl-numbers
+#| echo: false
+#| message: false
+#| warning: false
+#| fig-cap: "The number of attendances in the full sample dataset for each quarter in the study period. We also show the numbers of observed and predicted admissions, alongside the number of admissions that would have been seen had thresholds remained at the level seen in 2019/20 Q1.<br><br>"
+#| column: page
+#| fig-width: 12
+#| fig-asp: 0.618
+#| out-width: "85%"
+
+readRDS(here("data", "260126_dfq_compare_numbers_adm.rds")) |> 
+  mutate(fyear = as.numeric(str_extract(year_quarter, "[:digit:]{4}"))-1) |> 
+  mutate(tmp = str_sub(year_quarter, 3, 4)) |> 
+  mutate(quarter = str_sub(year_quarter, 6, 7)) |> 
+  mutate(fyear = str_c(fyear, "/", tmp)) |> 
+  select(fyear, quarter, everything(), -year_quarter, -tmp) |> 
+   gt() |> 
+  tab_spanner(
+    label = 'Admissions',
+    columns = c(actual_adm, pred_adm, pred_adm_cf, diff)
+              ) |> 
+   cols_label(
+    fyear = "Financial Year",
+    quarter = "Quarter",
+    att = "Attendances",
+    actual_adm = "Observed",
+    pred_adm = "Predicted",
+    pred_adm_cf = "Counterfactual",
+    diff = "Difference<br>(Pred. - Cf.)",
+    .fn = md
+  ) |> 
+  fmt_auto() |> 
+  fmt_number(columns = c(actual_adm, pred_adm, pred_adm_cf, diff), decimals = 0) |>
+    tab_options(
+    data_row.padding = px(1)
+    #table.font.size = "small"
+  ) |> 
+   tab_footnote(
+    footnote = "If threshold remained at level seen in 2019/20 Q1.",
+    locations = cells_column_labels(columns = pred_adm_cf)
+  )
+
+
+
+```
+:::
+
+## 1.4 Discussion
+
+An [earlier study](https://emj.bmj.com/content/34/12/773) found that admission thresholds rose steadily and substantially between 2010 and 2016. These strong secular trends appear to have ended by 2019, and have been replaced by modest fluctuations in thresholds, without a clear overall direction.
+
+Having adjusted for clinical casemix, we find that admission thresholds fell moderately but abruptly at the start of the COVID-19 pandemic, returning to pre-pandemic levels by April 2022. During the pandemic period, patients were approximately 10% more likely to be admitted, on average, than patients with similar needs presenting at other times.
+
+Outside of the COVID-19 pandemic and recovery period, we found that admission thresholds were more stable. Most changes that took place quarter-on-quarter may well be explained by chance alone, although our results suggest some systematic, non-seasonal patterns. Thresholds were highest in the months immediately before the pandemic and during the period from July 2022 to June 2023. Thresholds then reduced until March 2024 before rising again until December 2024. Although the odds of admission changed only modestly outside the pandemic and recovery period, these changes are likely to have materially influenced the admission decisions of thousands of patients each year.
+
+Further work would be required to understand whether these modest but nonetheless material changes in admission thresholds were random, intentional, or an organic response to changes in contextual factors such as bed availability.
+
+If healthcare systems are to succeed in redirecting resources from hospital to community settings, they will likely need to gain greater control over admission thresholds.
+
+## 1.5 Conclusion
+
+In the first part of this report, we have examined changes in the threshold for admission to hospital between April 2019 and March 2025. The analysis is based on a small but broadly representative subset of Type 1 emergency departments in England. We conclude that admission thresholds fell during the COVID-19 pandemic and recovery period and fluctuated modestly in the preceding and subsequent years.
+
+## 1.6 Appendix
+
+#### Model performance measures
+
+The fitted model scored an AUROC of 0.866 and a Brier Score of 0.132. Performance measures were calculated on out of (sub-) sample data, which should improve the robustness of these statistics.
+
+#### Selected additional model coefficients
+
+<br>
+
+::: panel-tabset
+## Sex
+
+```{r}
+#| label: fig-odds-other-sex
+#| echo: false
+#| message: false
+#| warning: false
+#| fig-cap: "<br>"
+#| column: page
+#| fig-width: 10
+#| fig-height: 3
+
+coeffs |> 
+    filter(str_detect(term, "sex")) |>
+  mutate(term = "female") |> 
+  plot_additional_coeffs()+
+  labs(
+    y = "Casemix-adjusted odds of admission (log scale)\nReference category: Male\n"
+  )
+```
+
+## Deprivation
+
+```{r}
+#| label: fig-odds-other-imd
+#| echo: false
+#| message: false
+#| warning: false
+#| fig-cap: "<br>"
+#| column: page
+#| fig-width: 12
+#| fig-height: 6
+
+coeffs |> 
+    filter(str_detect(term, "imd")) |>
+  # mutate(term = "female") |> 
+  plot_additional_coeffs()+
+  labs(
+    y = "Casemix-adjusted odds of admission (log scale)\nReference category: IMD Quintile 1\n"
+  )
+```
+
+## Ethnicity
+
+```{r}
+#| label: fig-odds-other-eth
+#| echo: false
+#| message: false
+#| warning: false
+#| fig-cap: "<br>"
+#| column: page
+#| fig-width: 12
+#| fig-asp: 0.618
+
+coeffs |> 
+    filter(str_detect(term, "ethnic")) |>
+  # mutate(term = "female") |> 
+  plot_additional_coeffs()+
+  labs(
+    y = "Casemix-adjusted odds of admission (log scale)\nReference category: British/'Mixed' British\n"
+  )
+```
+
+## Weekend
+
+```{r}
+#| label: fig-odds-other-wkend
+#| echo: false
+#| message: false
+#| warning: false
+#| fig-cap: "<br>"
+#| column: page
+#| fig-width: 10
+#| fig-height: 3
+
+coeffs |> 
+    filter(str_detect(term, "wkend")) |>
+  # mutate(term = "female") |> 
+  plot_additional_coeffs()+
+  labs(
+    y = "Casemix-adjusted odds of admission (log scale)\nReference category: Week day\n"
+  )
+```
+
+## Night time
+
+```{r}
+#| label: fig-odds-other-night
+#| echo: false
+#| message: false
+#| warning: false
+#| fig-cap: "<br>"
+#| column: page
+#| fig-width: 10
+#| fig-height: 3
+
+coeffs |> 
+    filter(str_detect(term, "night")) |>
+  mutate(term = "Night time") |>
+  plot_additional_coeffs()+
+  labs(
+    y = "Casemix-adjusted odds of admission (log scale)\nReference category: Daytime (8am to 8pm)\n"
+  )
+```
+
+## Diagnosis
+
+```{r}
+#| label: fig-odds-other-diag
+#| echo: false
+#| message: false
+#| warning: false
+#| fig-cap: "<br>"
+#| column: page
+#| fig-height: 18
+#| fig-width: 12
+
+coeffs |> 
+    filter(str_detect(term, "diagl1|diagl2|diagl3")) |>
+  # mutate(term = "female") |> 
+  plot_additional_coeffs()+
+  labs(
+    y = "Casemix-adjusted odds of admission (log scale)\nReference category: L3: Lower Respiratory Tract Infection\n"
+  )
+```
+
+## Acuity
+
+```{r}
+#| label: fig-odds-other-acuity
+#| echo: false
+#| message: false
+#| warning: false
+#| fig-cap: "<br>"
+#| column: page
+#| fig-width: 12
+#| fig-height: 6
+
+coeffs |> 
+    filter(str_detect(term, "acuity")) |>
+  filter(row_number() %in% 1:8) |> 
+  plot_additional_coeffs()+
+  labs(
+    y = "Casemix-adjusted odds of admission (log scale)\nReference category: Standard\n"
+  )
+```
+
+## Arrival mode
+
+```{r}
+#| label: fig-odds-other-arrmode
+#| echo: false
+#| message: false
+#| warning: false
+#| fig-cap: "<br>"
+#| column: page
+#| fig-width: 10
+#| fig-height: 3
+
+coeffs |> 
+    filter(str_detect(term, "arrm")) |>
+  mutate(term = "Arrived by ambulance") |>
+  plot_additional_coeffs()+
+  labs(
+    y = "Casemix-adjusted odds of admission (log scale)\nReference category: Arrived by other means\n"
+  )
+```
+
+## Referral Source
+
+```{r}
+#| label: fig-odds-other-refsorc
+#| echo: false
+#| message: false
+#| warning: false
+#| fig-cap: "<br>"
+#| column: page
+#| fig-width: 12
+#| fig-asp: 0.618
+
+coeffs |> 
+    filter(str_detect(term, "refer")) |>
+  plot_additional_coeffs()+
+  labs(
+    y = "Casemix-adjusted odds of admission (log scale)\nReference category: Referred by NHS 111\n"
+  )
+```
+:::
+
+<br>
+
+# Part 2: Tracking Thresholds for Hospital Admission via Emergency Department
+
+## 2.1 Introduction
+
+In the second part of this report, we propose methods, founded on statistical models, that would allow local areas to monitor whether casemix-adjusted admission thresholds are changing over time.[^8]
+
+[^8]: For admissions via a hospital emergency department
+
+We have imagined that such information might ultimately be incorporated in a simple software application (app). Using this app, a user might choose any one of 180 Type 1 (24 hour, consultant-led) emergency departments (EDs) and be shown how admission thresholds at that site are changing over time. The app could also include graphics and text summaries that describe how data quality and design choices have influenced the trends they are shown.
+
+## 2.2 Methods
+
+For each Type 1 ED, we aimed to show if, and by how much, thresholds for admission are changing over time. To achieve this, we fitted regression models to emergency care data to estimate the casemix-adjusted odds of admission for each week. The higher the odds of admission, the lower the admission threshold.
+
+### Data source
+
+This work relied on data from the Emergency Care Data Set (ECDS). Each ECDS record represents a patient attendance at an urgent or emergency care department. We selected the subset of records that were coded as unplanned attendances at Type 1 emergency departments, with an arrival date between 1st April 2025 and 19th October 2025 (inclusive).
+
+We excluded records where the patient left the ED before treatment was provided; where the patient died during an attendance; and where the individual was found to be dead on arrival at the ED.
+
+@tbl-where provides an example of how these choices affect the number of emergency attendances included from a given provider (in this case Hull Royal Infirmary).
+
+```{r}
+#| label: tbl-where
+#| echo: false
+#| message: false
+#| warning: false
+#| tbl-cap: "The effect of our chosen exclusions on the number of emergency care attendances included for Hull Royal Infirmary."
+
+# readRDS(here("data", "251110_where_matrix.rds")) |> 
+#   filter(der_provider_site_code == "RWA01") |> 
+#   mutate(sigma = sum(n)) |>
+#   rowwise() |> 
+#   mutate(row_sum = sum(c_across(c(everything(), -c(der_provider_code,der_provider_site_code, n, p, sigma))))) |> 
+#   ungroup() |> 
+#   # REMOVE THE ROW CORRESPONDING TO ATTENDANCES FOLLOWING ALL EXCLUSIONS:
+#   filter(row_sum != 0) |> 
+#   mutate(n_after_excl = sigma - cumsum(n)) |> 
+#   # view()
+#   mutate(n_before_excl = n_after_excl + n) |> 
+#   select(-c(sigma, p)) |> 
+#   rename(n_excl = n) |> 
+#   relocate(c(n_before_excl, n_excl, n_after_excl), .after = row_sum) |> 
+#   mutate(exclusion = if_else(not_type_1 == 1, "not type 1", "")) |>
+#   mutate(exclusion = if_else(planned == 1, str_c(exclusion, " planned; "), exclusion)) |>
+#   mutate(exclusion = if_else(sex_other == 1, str_c(exclusion, " sex-other; "), exclusion)) |>
+#   mutate(exclusion = if_else(doa == 1, str_c(exclusion, " DOA; "), exclusion)) |>
+#   mutate(exclusion = if_else(died_ed == 0 & left_died == 1, str_c(exclusion, " left before treatment; "), exclusion)) |>
+#   mutate(exclusion = if_else(died_ed == 1, str_c(exclusion, " died in ED; "), exclusion)) |>
+#   select(exclusion, starts_with("n_")) |>
+#   group_by(exclusion) |> 
+#   summarise(across(starts_with("n_"), ~ sum(.))) |> 
+#   arrange(-n_before_excl)
+  # view("where")
+
+readRDS(here("data", "251110_where_matrix.rds")) |> 
+  filter(der_provider_site_code == "RWA01") |> 
+  mutate(sigma = sum(n)) |>
+  rowwise() |> 
+  mutate(row_sum = sum(c_across(c(everything(), -c(der_provider_code,der_provider_site_code, n, p, sigma))))) |> 
+  ungroup() |> 
+  # REMOVE THE ROW CORRESPONDING TO ATTENDANCES FOLLOWING ALL EXCLUSIONS:
+  filter(row_sum != 0) |> 
+  mutate(exclusion = if_else(not_type_1 == 1, "not type 1", "")) |>
+  mutate(exclusion = if_else(planned == 1, str_c(exclusion, " planned; "), exclusion)) |>
+  mutate(exclusion = if_else(sex_other == 1, str_c(exclusion, " sex-other; "), exclusion)) |>
+  mutate(exclusion = if_else(doa == 1, str_c(exclusion, " DOA; "), exclusion)) |>
+  mutate(exclusion = if_else(died_ed == 0 & left_died == 1, str_c(exclusion, " left before treatment; "), exclusion)) |>
+  mutate(exclusion = if_else(died_ed == 1, str_c(exclusion, " died in ED; "), exclusion)) |> 
+  select(exclusion, n, sigma) |> 
+  group_by(exclusion) |>
+  summarise(n_excl = sum(n), sigma = mean(sigma)) |> 
+  arrange(-n_excl) |> 
+  mutate(n_after_excl = sigma - cumsum(n_excl)) |>
+  mutate(n_before_excl = n_after_excl + n_excl) |> 
+  select(exclusion, n_before_excl, n_excl, n_after_excl) |>   gt() |> 
+   cols_label(
+    exclusion = "Exclusion (excl.)",
+    n_before_excl = "Attendances before excl.",
+    n_excl = "Attendances excluded",
+    n_after_excl = "Attendances after excl."
+   ) |> 
+  fmt_auto() |> 
+   tab_options(
+    data_row.padding = px(1),
+    table.font.size = "small"
+  ) 
+
+```
+
+### Data quality considerations
+
+Whilst the ECDS is recognised as a high-quality data source, there is yet considerable variation in data quality, both across provider sites and over time. We examine the issues we observed, and detail our solutions, below.
+
+#### Data quality over time
+
+We chose to use records in which the patient arrived at a ED on or after April 1st 2025, in the belief that this would 1) minimise the variation in data quality that occurs over an extended period; and 2) provide sufficient context in which to interpret current measurements of admission thresholds.
+
+There was a further balance to achieve when thinking about an end date to our period of study. With an app in mind, we wanted our estimates of admission thresholds to run close to the current date, since the objective would be to present relevant and actionable information. However, data quality can be low for very recent data, due to the way data is incrementally flowed from providers to the ECDS. We therefore programmed a rolling end date to our study, and a buffer period, such that the most recent data point would cover the last complete week (Mon-Sun) occurring at least 21 days before the computer code was executed.[^9] This buffer period should increase the chances that all sites had submitted high quality data across every field.
+
+[^9]: In the case of the text and graphics presented in this document, the computer code was executed on November 10th 2025, which makes the last complete week the 13-19th October 2025.
+
+#### Data quality by site
+
+When examining data quality by site, we observed issues that could be characterised as being: a) accuracy-related; and b) completeness-related. Here, we examine these dimensions separately:
+
+##### Addressing inaccuracy
+
+We are detached from the data-generating and data-capture processes, and therefore we can only infer that data did not represent real-world events. For example, at several sites we observed that almost all patients were coded as having been sent home, as shown in @tbl-accuracy.
+
+This data is unlikely to reflect the reality at major EDs. In this case, therefore, we chose to exclude 5 sites with crude admission rates below 5%.
+
+```{r}
+#| label: tbl-accuracy
+#| echo: false
+#| message: false
+#| warning: false
+#| tbl-cap: "Emergency departments with the lowest crude admission rates. We excluded sites with rates below 5%, as these are unrealistically low."
+#| cache: true
+
+readRDS(here("data", "251110_nested.rds")) |>
+  mutate(p = map_dbl(data, function(df) {
+    df |>
+      count(admitted) |>
+      mutate(p = n/sum(n)) |>
+      filter(admitted == 1) |>
+      pull(p)
+  }
+  )) |>
+  mutate(p_adm = abs(p)) |>
+  mutate(site_name = map_chr(data, \(df) df |> distinct(site_name) |> pull() |> as.character())) |>
+  distinct(site_name, p_adm) |>
+  arrange(p_adm) |> 
+  filter(p_adm < 0.09) |> 
+  gt() |> 
+   cols_label(
+    site_name = "Site of emergency department",
+    p_adm = "% Attendances resulting in admission",
+    .fn = md
+   ) |> 
+  fmt_auto() |> 
+  fmt_percent(p_adm, decimals = 2) |> 
+   tab_options(
+    data_row.padding = px(1),
+    table.font.size = "small"
+  ) 
+
+```
+
+##### Addressing incompleteness {#sec-incompleteness}
+
+At a site level, on average, 72% of records were missing a value in *at least one* of the fields we had selected for our models. Since our intended regression models would not accept missing values, we had the choice to either: 1) exclude records with missing values; 2) impute missing values; or 3) assign missing values to an explicit missing category.[^10]
+
+[^10]: This was only possible as the variables with missing values were exclusively categorical.
+
+We opted for the third approach, which allowed us to make use all the records in our study dataset without the need to employ additional (and potentially complex) imputation algorithms. This approach especially useful when fitting models for smaller sites, where the number of records (n) we have for that site may not greatly exceed the number of predictor variables (p) that we wish to include in our regression models. As p –\> n, we get closer to an over-fitted, under-powered model, which will be more likely to produce inaccurate predictions and be incapable of distinguishing between genuine effect and random variation.
+
+The approach we used also allows the model to make use of the missingness signals. Importantly here, we haven't made the assumption that data were missing at random. We believed, instead, that the missingness was more likely to be due to failures of systems and processes. If, however, the missingness was random, there is a risk that models we build could incorporate a false signal. This signal would compete with other variables for explanatory power, which may ultimately distort the coefficients of interest.
+
+#### Addressing non-constant risks
+
+There is another potential hazard which could be amplified by the approach we took to address missing variables: that of non-constant risks by week. In other words, coding practices at a site - which might include the information that goes *uncoded* - could vary greatly from week to week. And if, for example, admission rates of patients with a missing diagnosis varied greatly from week to week - because of large changes in the casemix that goes uncoded - this would distort our coefficients of interest.
+
+In order to highlight results that may have been affected by non-constant risks, we produced a second set of models. The details of these models, and how these models were used to identify possible non-constant risks, can be found in @sec-nc-risk.
+
+### Additional data processing
+
+Further to the treatment of missing values, we created a new *referral source* variable consisting of six levels, which combined categories from the *attendance source* field. We created 3 new binary variables indicating 1) whether the patient arrived at ED by ambulance (of any type); 2) whether the patient arrived outside daytime hours (or 8pm - 8am); and 3) whether the patient arrived at a weekend.
+
+Importantly, we chose to re-engineer the *primary diagnosis* and *chief complaint* variables. Both of these variables, unmodified, consisted of a large number of categories (850+ for diagnosis and 180+ for complaint). As implied in @sec-incompleteness, if we can substantially reduce the number of predictors whilst minimising the loss of information, we are likely to improve our models. Therefore, for both *primary diagnosis* and *chief complaint*, we grouped together less frequent conditions with the aid of a [3-tier hierarchy (the "ECDS Refset", created by NHSE)](https://digital.nhs.uk/data-and-information/data-collections-and-data-sets/data-sets/emergency-care-data-set-ecds/ecds-guidance). We conducted this grouping at the site level. As a consequence, groupings may vary, slightly, from site to site.
+
+##### Diagnosis grouping
+
+Across sites, the top 30 diagnoses accounted for an average of 60% of records.[^11] When re-engineering diagnosis, we there left the 30 most frequent diagnosis codes un-grouped (thus retaining the most precise diagnosis information). We then grouped the remaining diagnoses at a higher (medium-precision) level, and chose the 10 most frequent of these medium-precision diagnosis labels. Finally, we grouped the remaining diagnoses at the highest, most general level of the hierarchy.
+
+[^11]: Missing diagnoses are included in this 60%.
+
+This resulted in a median of 51 distinct diagnosis levels per site (lower quartile = 46, upper quartile = 52). An example for the ED at the Royal Liverpool University Hospital is shown in @tbl-diagnosis.
+
+```{r}
+#| label: tbl-diagnosis
+#| echo: false
+#| message: false
+#| warning: false
+#| tbl-cap: "Categories in the re-engineered diagnosis variable. This data is specific to the Royal Liverpool University Hospital."
+
+df_var_engineering_2of2 <- readRDS(here("data", "251110_nested.rds"))
+
+# df_var_engineering_2of2 |> 
+#   filter(mod_spec == "a") |>
+#   mutate(s = map_dbl(data, function(df){
+#                  df |>
+#                    distinct(diag01) |>
+#                    count() |>
+#                    pull()
+#   }
+#          )) |> 
+#   summarise(
+#     lq = quantile(s, 0.25),
+#     med = median(s),
+#     uq = quantile(s, 0.75)
+#     )
+
+df_var_engineering_2of2 |> 
+  #filter(der_provider_site_code == "RWA01") |>
+  filter(str_detect(ed_name, "Liverpool Uni")) |>
+  # print(n=40)
+  filter(mod_spec == "a") |>
+  unnest(data) |> 
+  count(diag01, sort = T) |> 
+  mutate(id = row_number()) |> 
+  mutate(diag01 = if_else(id > 19, "-_other", diag01)) |> 
+  group_by(diag01) |> 
+  summarise(n = sum(n), id = max(id)) |> 
+  arrange(id) |> 
+  mutate(p = n/sum(n)) |>
+  mutate(cs = cumsum(p)) |> 
+  separate(diag01, into = c("level", "diagnosis"), sep = "_", extra = "merge") |> 
+  mutate(level = str_remove(level, "l")) |> 
+  mutate(diagnosis = str_to_sentence(diagnosis)) |> 
+  mutate(diagnosis = str_replace_all(diagnosis, "_", " ")) |> 
+  select(-c(id, cs)) |> 
+   gt() |> 
+   cols_label(
+    level = "Grouping level",
+    diagnosis = "Diagnosis",
+    n = "Number of attendances",
+    p = "% of attendances",
+    .fn = md
+   ) |> 
+  fmt_auto() |> 
+  fmt_percent(columns = p, decimals = 1) |> 
+   tab_options(
+    data_row.padding = px(1),
+    table.font.size = "small"
+  ) |> 
+  tab_footnote(
+footnote = "Level of 3-tier hierarchy (from the 'ECDS refset') at which the diagnosis code was grouped. Level 3 gives the most precise information available.",
+locations = cells_column_labels(columns = level)
+)
+
+```
+
+##### Complaint grouping
+
+We followed a similar process with the chief complaint field.[^12] We left the most frequent 50 chief complaints un-grouped (these accounted for an average of 84% of records per site).[^13] We then grouped the remaining chief complaints at the highest, most general level.
+
+[^12]: Note that, unmodified, the detail given in the chief complaint field is equivalent to the second level of the 3-tier hierarchy, so we only have two levels in this case.
+
+[^13]: Missing complaints are included here.
+
+This grouping resulted in a median of 65 distinct complaint levels (lower quartile = 65, upper quartile = 66). An example for the ED at Frimley Park Hospital is shown in @tbl-complaint.
+
+```{r}
+#| label: tbl-complaint
+#| echo: false
+#| message: false
+#| warning: false
+#| tbl-cap: "Categories in the re-engineered complaint variable. This data is specific to Frimley Park Hospital."
+#| cache: true
+
+# df_var_engineering_2of2 |>
+#   filter(mod_spec == "b") |>
+#   mutate(s = map_dbl(data, function(df){
+#                  df |>
+#                    distinct(complaint) |>
+#                    count() |>
+#                    pull()
+#   }
+#          )) |>
+#   summarise(
+#     lq = quantile(s, 0.25),
+#     med = median(s),
+#     uq = quantile(s, 0.75)
+#     )
+
+df_var_engineering_2of2 |> 
+# readRDS(here("data", "251110_nested.rds")) |>
+  #filter(der_provider_site_code == "RWA01") |>
+  filter(str_detect(ed_name, "Frim")) |>
+  # print(n=40)
+  filter(mod_spec == "b") |>
+  unnest(data) |> 
+  count(complaint, sort = T) |> 
+  mutate(id = row_number()) |> 
+  mutate(complaint = if_else(id > 19, "-_other", complaint)) |> 
+  group_by(complaint) |> 
+  summarise(n = sum(n), id = max(id)) |> 
+  arrange(id) |> 
+  mutate(p = n/sum(n)) |>
+  mutate(cs = cumsum(p)) |> 
+  separate(complaint, into = c("level", "complaint"), sep = "_", extra = "merge") |> 
+  mutate(level = str_remove(level, "l")) |> 
+  mutate(complaint = str_to_sentence(complaint)) |> 
+  mutate(complaint = str_replace_all(complaint, "_", " ")) |> 
+  select(-c(id, cs)) |> 
+   gt() |> 
+   cols_label(
+    level = "Grouping level",
+    complaint = "Complaint",
+    n = "Number of attendances",
+    p = "% of attendances",
+    .fn = md
+   ) |> 
+  fmt_auto() |> 
+  fmt_percent(columns = p, decimals = 1) |> 
+   tab_options(
+    data_row.padding = px(1),
+    table.font.size = "small"
+  ) |> 
+  tab_footnote(
+footnote = "Level of hierarchy (from the 'ECDS refset') at which the chief complaint code was grouped. Level 2 gives the most precise information available for the chief complaint.",
+locations = cells_column_labels(columns = level)
+)
+  
+```
+
+### Variable selection: diagnosis or complaint?
+
+In terms of variable selection, our major decision concerned two variables that each indicate a clinician's assessment of the patient's condition. These are:
+
+-   The *primary diagnosis* variable (hereafter referred to as *diagnosis*) indicates the main condition treated or investigated during the patient's stay in the ED.
+
+-   The *chief complaint* variable (hereafter referred to as *complaint*), on the other hand, refers to "[the primary problem a patient is presenting with, as initially assessed by a clinician](https://www.england.nhs.uk/guidance-for-emergency-departments-initial-assessment/)."
+
+These variables are particularly important because a clinician's assessment of the patient's condition is likely to be the strongest predictor of admission. We must choose just one, however, in a given model. This is due to the likely relationship (multicollinearity) between these two variables.
+
+All else being equal, *diagnosis* provides more accurate and precise information about a patient’s condition, and would thus better allow us to control for casemix. However, if a site has coded *diagnosis* poorly compared to *complaint*, we questioned if there would be a point at which it would be beneficial to use *complaint* instead of *diagnosis*.
+
+After testing models that used either *diagnosis* or *complaint,* and assessing these against the AUROC and Brier Score statistics, we opted to use diagnosis for each site-based model, unless: 1) diagnosis completion rate at a site was below 40% in any one week, **and** 2) the minimum complaint completion rate in any one week was 40% higher than the minimum diagnosis completion rate in any week.
+
+There were 13 sites that met these criteria. In these cases, we used chief complaint in the model, in place of diagnosis. We therefore had two different model specifications for our principle question, and two corresponding specifications for our models to assess non-constant risks.
+
+### Model specification
+
+#### Primary models
+
+We fitted a separate logistic generalised additive model (logistic GAM) for each site.
+
+Our outcome variable was whether the patient was admitted, or not. Our variable of interest was the week that a patient attended.
+
+As noted above, we worked with two specifications, identical other than in their use of either the re-engineered *diagnosis* or *complaint* variable.
+
+Otherwise, we included variables to adjust for casemix (as far as possible), namely: *age* (as a spline-based smooth) interacting with *sex*; *acuity*; whether the patient arrived by ambulance or not; and the *referral source*. We incorporated variables to account for the ethnicity and socioeconomic status of patients.[^14]^,^ [^15] In addition, we included time-related variables to control for weekday or weekend attendances, and whether the attendance was during the night (8 pm to 8 am).
+
+[^14]: The ethnicity variable contained 18 categories which broadly corresponded to the [high-level groups used by the ONS in the 2021 census](https://www.ethnicity-facts-figures.service.gov.uk/style-guide/ethnic-groups/).
+
+[^15]: The Index of Multiple Deprivation quintile covering the area in which a patient lived was used a proxy for socioeconomic status.
+
+We intentionally omitted contextual factors such as the level of crowding and the inpatient occupancy at the time a patient was treated. Instead, we wanted to leave these factors as possible explanations for any changes seen in admission thresholds. If we were to adjust for such effects they would not (in theory) be visible in the time series.
+
+#### Secondary models (to identify non-constant risks) {#sec-nc-risk}
+
+We produced a second set of models with which we aimed to highlight results from the primary models that may have been affected by non-constant risks.
+
+Before fitting this second set of models, we created an additional binary variable which indicated whether the most influential predictor, *diagnosis* (or *complaint*, where applicable), was missing or not. This additional term and interaction terms created between this new variable and the *week* variable were the only differences between the primary and secondary model specifications.
+
+We reasoned that the coefficients of the interaction terms should indicate non-constant risks, if they are present.[^16] To help illustrate our reasoning, we will use @fig-nc-risk, which shows interaction coefficients (and their 80% confidence intervals), ordered by week, for the ED at St. George's Hospital (Tooting). On this plot we have also drawn horizontal lines, showing the median value of these interaction coefficients, and lines at twice and half the median value.[^17] These latter two lines are our upper and lower bounds: if an interaction estimate and its confidence interval is fully outside these bounds, then we judged that the term – and, at root, the proportion of missing diagnoses/complaints in that week – is contributing abnormal explanatory power to the model. In this case we would flag that week's result in our primary charts as being potentially problematic.
+
+[^16]: There may also be non-constant risks, by week, if we were to look at acuity, for example. However, as diagnosis and complaint are likely to be the most influential variables when estimating odds of admission, and the recording of diagnosis and complaint appears to less consistent than for other variables, we have focussed our attention here.
+
+[^17]: The median value was used as a reference level, in preference to specific odds values, as this removed the risk of the reference category being abnormal.
+
+```{r}
+#| label: fig-nc-risk
+#| echo: false
+#| message: false
+#| warning: false
+#| fig-cap: "Coefficient values for the interaction between the binary 'missing complaint' variable and the week variable (with 80% confidence intervals). Shown for St. George's Hospital (Tooting). If an interaction estimate and its confidence interval appears fully outside the area bounded by parallel dotted lines, then we took this as evidence of a non-constant risk for that week. <br><br>"
+#| column: page
+#| fig-width: 12
+#| fig-asp: 0.618
+#| out-width: "85%"
+
+
+df_risk_plots <- readRDS(here("data", "251110_df_risk_plots.RDS"))
+  
+  df_risk_plots$plot_risk[[7]] +
+    scale_y_log10() +
+    annotate(label = "0.5 x mean", "text", y = 0.6, x = as_date("2025-04-01"),  col = "grey20")+
+    annotate(label = "2 x mean", "text", y = 2.3, x = as_date("2025-04-01"),  col = "grey20")+
+    theme(
+          axis.title = element_text(size = 12),
+          axis.text = element_text(size = 10),
+          plot.title = element_blank()
+          )+
+    labs(
+      title = "St George's Hospital (Tooting)",
+      x = "\nDate (week commencing)",
+      y = str_c(
+        "Casemix-adjusted odds of admission (log scale)\n(Reference category: w/c April 7th 2025)\n"
+      )
+    )
+```
+
+### Presentation of results
+
+In @fig-xmr, we have illustrated how the odds of admission vary over time with the aid of a particular type of Statistical Process Control (SPC) chart - the XMR chart. This chart has two components, the “X” plot and the “mR” plot:
+
+-   The “X” plot (at the top of the chart) displays how the outcome of interest changes over time. Three horizontal lines represent the mean value and the upper and lower “control limits" (at 3 standard deviations from the mean value).[^18] These control limits define the expected range of variation for the process in question. If a point falls between the upper and lower control limits, then the result is considered within the bounds of natural - or “common cause” - variation, and the process is deemed stable. If, on the other hand, a point is outside the control limits, this indicates that the difference from the process mean should not be attributed to random variation. In SPC terms, there is a “special cause” for the variation.[^19]
+
+-   The “mR” (moving range) plot, is displayed below the X plot, on an identical horizontal axis. It shows whether the (absolute) difference between consecutive points on the X plot might be considered abnormal. Horizontal lines on the plot show the mean value and the upper control limit (at 3 standard deviations from the mean).[^20] A large change - positive or negative - between consecutive points in the X plot may result in an mR point that is above the upper control limit. In this case, the change in the outcome of interest (between consecutive points) is greater than might be expected for this process.
+
+[^18]: To obtain control limits with the standard calculations, we must have values that are normally distributed. We therefore performed these calculations on the the raw model output values (log odds ratios), which are approximately normal, and only then transformed them.
+
+[^19]: According to **(Wheeler / Berwick? - Ask M.A.M. for reference)**, the presence of single data point displaying special cause variation signfies that a process shift has taken place. Moreover, specific patterns involving several common cause data points can also indicate a process shift. Whilst not covered in this document, when a process shift has occured, the control limits are often re-calibrated. We suggest that, if there were to be a re-calibration of the SPC chart
+
+[^20]: Note that differences are absolute, so there is no lower control limit.
+
+```{r}
+#| label: fig-xmr
+#| echo: false
+#| message: false
+#| warning: false
+#| fig-cap: "An XmR chart for St. George's Hospital (Tooting), showing the casemix-adjusted odds of admission between April and September 2025 (top plot), and the 'moving range' of these odds over the same period (bottom chart).<br><br>"
+#| column: page
+#| fig-width: 12
+#| fig-asp: 0.618
+#| out-width: "85%"
+
+
+df_xmr_plots <- readRDS((here::here("data", "251110_df_plots.rds")))
+
+a <- df_xmr_plots$plot_x[[7]]+
+  geom_point(colour = "grey20") +
+   annotate(label = "Mean", "text", y = 1, x = as_date("2025-04-01"),  col = "grey20")+
+  annotate(label = "LCL", "text", y = 0.8, x = as_date("2025-04-01"),  col = "grey20")+
+  annotate(label = "UCL", "text", y = 1.30, x = as_date("2025-04-01"),  col = "grey20")+
+    theme(
+        axis.title = element_text(size = 12),
+        axis.title.x = element_blank(),
+        axis.text = element_text(size = 10),
+        plot.title = element_blank()
+        )
+  # geom_point(aes(colour = NULL)) +
+  # scale_color_manual(values = c("grey20", "grey20"))+
+b <- df_xmr_plots$plot_mr[[7]]+
+  geom_point(colour = "grey20")+
+    annotate(label = "Mean", "text", y = 0.11, x = as_date("2025-04-01"),  col = "grey20")+
+  annotate(label = "UCL", "text", y = 0.31, x = as_date("2025-04-01"),  col = "grey20")+
+  theme(legend.position = "none") +
+    theme(
+        axis.title = element_text(size = 12),
+        axis.text = element_text(size = 10),
+        plot.title = element_blank()
+        )+
+   labs(
+    x = "\nDate (week commencing)"
+   )
+  
+a/b
+```
+
+Returning to our specific case, XmR charts may prove useful if we wish to see whether an intervention, or series of interventions,[^21] has had a significant and sustained influence on admission thresholds.
+
+[^21]: Such as we might see as a consequence of the NHS neighbourhood plan
+
+Looking at @fig-xmr, which shows St George's Hospital, it appears (from the X plot) that the casemix-adjusted odds of admission were relatively consistent from April until the last week in September. At this point, the odds of admission rise sharply (which corresponds to a fall in the threshold for admission). What should we read into this?
+
+Firstly, we see that, from the end of September, there is clear evidence of special-cause variation. This indicates the existence of unique or unusual factors influencing the admission threshold at that time, that are not normally present. The mR plot can give us an indication of the nature of these unusual factors. That is to say that, since the weekly change at the end of September is highly abnormal, the special cause variation in the X plot is likely to be the result of an isolated, quickly-appearing event, rather than a initiative that has produced change over an extended period.
+
+Given this context, one of the most likely causes here is a data quality issue. And, if we progress to @fig-xmr-risk - which includes information about weeks affected by non-constant risk - we find that non-constant risks *are* flagged in the last few weeks of the period. In this case, then, we should question the validity of these final data points. If we were to re-run the analysis at a later date (as one might, were these methods incorporated into a tool) it is possible that refreshed data would give us a more robust picture of the admission threshold in late September and early October.
+
+```{r}
+#| label: fig-xmr-risk
+#| echo: false
+#| message: false
+#| warning: false
+#| fig-cap: "An XmR chart for St. George's Hospital (Tooting), showing the casemix-adjusted odds of admission between April and September 2025 (top plot), and the 'moving range' of these odds over the same period (bottom chart). Weeks in which non-constant risks have been identified are represented by red points.<br><br>"
+#| column: page
+#| fig-width: 12
+#| fig-asp: 0.618
+#| out-width: "85%"
+
+ 
+c <- df_xmr_plots$plot_x[[7]]+
+      geom_point(aes(colour = flag_risk), size = 2) +
+   annotate(label = "Mean", "text", y = 1, x = as_date("2025-04-01"),  col = "grey20")+
+  annotate(label = "LCL", "text", y = 0.8, x = as_date("2025-04-01"),  col = "grey20")+
+  annotate(label = "UCL", "text", y = 1.30, x = as_date("2025-04-01"),  col = "grey20")+
+    theme(
+        axis.title = element_text(size = 12),
+        axis.title.x = element_blank(),
+        axis.text = element_text(size = 10),
+        plot.title = element_blank()
+        )
+  # geom_point(aes(colour = NULL)) +
+  # scale_color_manual(values = c("grey20", "grey20"))+
+d <- df_xmr_plots$plot_mr[[7]]+
+  geom_point(aes(colour = flag_risk), size = 2) +
+   annotate(label = "Mean", "text", y = 0.11, x = as_date("2025-04-01"),  col = "grey20")+
+  annotate(label = "UCL", "text", y = 0.31, x = as_date("2025-04-01"),  col = "grey20")+
+  # theme(legend.position = "none") +
+    theme(
+        axis.title = element_text(size = 12),
+        axis.text = element_text(size = 10),
+        plot.title = element_blank(),
+        legend.text = element_text(size = 7)
+        )+
+   labs(
+    x = "\nDate (week commencing)"
+   )
+  
+c/d   
+```
+
+### Reproducibility
+
+The computer code used in this analysis can be found a [GitHub repository](https://github.com/The-Strategy-Unit/tracking_adm_thresholds) (permissions currently required).
+
+## 2.3 Discussion
+
+Our analysis suggests that it may be feasible to design statistical models and associated tools to allow health systems to track casemix-adjusted admission thresholds in individual emergency departments. The models would need to be tuned to take account of the quality, coverage, and consistency of each department’s Emergency Care Data Set submissions. These models are moderately complex, and care would be required to ensure that users interpret the results appropriately. Users of these tools would likely require training and initial tailored support. Discussions with potential users would help guide decisions about the value and nature of any tool development and deployment.
+
+## 2.4 Conclusion
+
+In the second part of this report, we have outlined methods and visualisations that would allow local areas to monitor whether casemix-adjusted admission thresholds at their EDs are changing over time.
+
+We suggest that many of the tables and charts presented here might be incorporated in a simple software application (app). Using this app, a user could choose any one of 180 EDs, view the current admission threshold at an ED, and examine how the threshold has changed over time.
