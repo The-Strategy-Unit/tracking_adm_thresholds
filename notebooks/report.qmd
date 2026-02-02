@@ -68,7 +68,7 @@ In this document, we propose methods, founded on statistical models, that would 
 
 [^1]: For admissions via a hospital emergency department
 
-We have imagined that such information might ultimately be incorporated in a simple software application (app). Using this app, a user might choose any one of 180 Type 1 (24 hour, consultant-led) emergency departments (EDs) and be shown how admission thresholds at that site are changing over time. The app could also include graphics and text summaries that describe how data quality and design choices have influenced the trends they are shown.
+We have imagined that such information might ultimately be incorporated in a simple software application (app). Using this app, a user might choose any one of 180 Type 1 (24 hour, consultant-led) emergency departments (EDs) and be shown how admission thresholds at that site are changing over time. The app could also include graphics and text summaries to illustrate how data quality and model design choices have influenced the trends they are shown.
 
 # Methods
 
@@ -135,14 +135,39 @@ readRDS(here("data", "251110_where_matrix.rds")) |>
   arrange(-n_excl) |> 
   mutate(n_after_excl = sigma - cumsum(n_excl)) |>
   mutate(n_before_excl = n_after_excl + n_excl) |> 
-  select(exclusion, n_before_excl, n_excl, n_after_excl) |>   gt() |> 
+  select(exclusion, n_before_excl, n_excl, n_after_excl) |> 
+  # REVERT TO MORE TYPICAL FORMAT:
+  mutate(exclusion = case_when(
+    str_detect(exclusion, "left before") ~ "Left before treatment",
+    str_detect(exclusion, "planned") ~ "Planned",
+    str_detect(exclusion, "died in ED") ~ "Died in ED",
+    str_detect(exclusion, "sex") ~ "Sex: other",
+    str_detect(exclusion, "DOA") ~ "Dead on arrival",
+    T ~ NA_character_
+  )) |> 
+  group_by(exclusion) |> 
+  summarise(
+    n_before_excl = max(n_before_excl),
+    n_excl = sum(n_excl)
+    ) |> 
+  arrange(-n_before_excl) |> 
+  mutate(n_after_excl = n_before_excl - n_excl) |> 
+  mutate(n_before_excl = if_else(
+    row_number() == 1, n_before_excl, 
+           lag(n_after_excl)
+    )) |> 
+  mutate(perc = n_excl/ n_before_excl[1]) |> 
+  # TODO PERCENTAGE
+  gt() |> 
    cols_label(
     exclusion = "Exclusion (excl.)",
     n_before_excl = "Attendances before excl.",
     n_excl = "Attendances excluded",
-    n_after_excl = "Attendances after excl."
+    n_after_excl = "Attendances after excl.",
    ) |> 
   fmt_auto() |> 
+  fmt_percent(columns = perc, decimals = 1) |> 
+  cols_merge(columns = c(n_excl, perc), pattern = "{1} ({2})") |> 
    tab_options(
     data_row.padding = px(1),
     table.font.size = "small"
