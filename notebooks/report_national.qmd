@@ -161,7 +161,7 @@ As explained above, we viewed completeness and consistency across *diagnosis*, *
 
 Aiming for yet greater consistency, we excluded a further 3 sites (from the initial selection of 20) where completion of the *diagnosis* field decreased, on average, by more than 3% per year. And we excluded one further site that showed two sizeable step changes in completion of the *diagnosis* field. This left us with a working sample of 16 sites.
 
-As a final step, it was necessary to verify that our intended outcome variable (whether the patient was admitted or not (more details in @sec ... ) was complete throughout the study period, for each site in the working sample. At the same time, we established that any change in the crude rate of admission, by site, did not exceed +/-10% from any one quarter to the next. (Such swings might have been indicative of a data quality issue.) However, each of the 16 sites in our working sample met these criteria.
+As a final step, it was necessary to verify that our intended outcome variable (whether the patient was admitted or not) was complete throughout the study period, for each site in the working sample. At the same time, we established that any change in the crude rate of admission, by site, did not exceed +/-10% from any one quarter to the next. (Such swings might have been indicative of a data quality issue.) However, each of the 16 sites in our working sample met these criteria.
 
 #### Sites in the sample
 
@@ -728,7 +728,7 @@ If healthcare systems are to succeed in redirecting resources from hospital to c
 
 In the first part of this report, we have examined changes in the threshold for admission to hospital between April 2019 and March 2025. The analysis is based on a small but broadly representative subset of Type 1 emergency departments in England. We conclude that admission thresholds fell during the COVID-19 pandemic and recovery period and fluctuated modestly in the preceding and subsequent years.
 
-## 1.6 Appendix
+## 1.6 Appendix {#sec-appendix}
 
 #### Model performance measures
 
