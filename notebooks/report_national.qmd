@@ -747,9 +747,10 @@ The fitted model scored an AUROC of 0.866 and a Brier Score of 0.132. Performanc
 #| message: false
 #| warning: false
 #| fig-cap: "<br>"
-#| column: page
-#| fig-width: 10
-#| fig-height: 3
+
+##| column: page
+##| fig-width: 10
+##| fig-height: 3
 
 coeffs |> 
     filter(str_detect(term, "sex")) |>
@@ -936,9 +937,9 @@ coeffs |>
 
 In the second part of this report, we propose methods, founded on statistical models, that would allow local areas to monitor whether casemix-adjusted admission thresholds are changing over time.[^8]
 
-[^8]: For admissions via a hospital emergency department
+[^8]: The Index of Multiple Deprivation quintile covering the area in which a patient lived was used a proxy for socioeconomic status.
 
-We have imagined that such information might ultimately be incorporated in a simple software application (app). Using this app, a user might choose any one of 180 Type 1 (24 hour, consultant-led) emergency departments (EDs) and be shown how admission thresholds at that site are changing over time. The app could also include graphics and text summaries that describe how data quality and design choices have influenced the trends they are shown.
+We have imagined that such information might ultimately be incorporated in a simple software application (app). Using this app, a user might choose any one of 180 Type 1 (24 hour, consultant-led) emergency departments (EDs) and be shown how admission thresholds at that site are changing over time. The app could also include graphics and text summaries to illustrate how data quality and model-design choices have influenced the trends they are shown.
 
 ## 2.2 Methods
 
@@ -1005,7 +1006,32 @@ readRDS(here("data", "251110_where_matrix.rds")) |>
   arrange(-n_excl) |> 
   mutate(n_after_excl = sigma - cumsum(n_excl)) |>
   mutate(n_before_excl = n_after_excl + n_excl) |> 
-  select(exclusion, n_before_excl, n_excl, n_after_excl) |>   gt() |> 
+  select(exclusion, n_before_excl, n_excl, n_after_excl) |>  
+  
+  
+# REVERT TO MORE TYPICAL FORMAT:
+  mutate(exclusion = case_when(
+    str_detect(exclusion, "left before") ~ "Left before treatment",
+    str_detect(exclusion, "planned") ~ "Planned",
+    str_detect(exclusion, "died in ED") ~ "Died in ED",
+    str_detect(exclusion, "sex") ~ "Sex: other",
+    str_detect(exclusion, "DOA") ~ "Dead on arrival",
+    T ~ NA_character_
+  )) |> 
+  group_by(exclusion) |> 
+  summarise(
+    n_before_excl = max(n_before_excl),
+    n_excl = sum(n_excl)
+    ) |> 
+  arrange(-n_before_excl) |> 
+  mutate(n_after_excl = n_before_excl - n_excl) |> 
+  mutate(n_before_excl = if_else(
+    row_number() == 1, n_before_excl, 
+           lag(n_after_excl)
+    )) |> 
+  mutate(perc = n_excl/ n_before_excl[1]) |> 
+  # TODO PERCENTAGE
+  gt() |> 
    cols_label(
     exclusion = "Exclusion (excl.)",
     n_before_excl = "Attendances before excl.",
@@ -1013,6 +1039,8 @@ readRDS(here("data", "251110_where_matrix.rds")) |>
     n_after_excl = "Attendances after excl."
    ) |> 
   fmt_auto() |> 
+  fmt_percent(columns = perc, decimals = 1) |> 
+  cols_merge(columns = c(n_excl, perc), pattern = "{1} ({2})") |> 
    tab_options(
     data_row.padding = px(1),
     table.font.size = "small"
@@ -1093,13 +1121,13 @@ The approach we used also allows the model to make use of the missingness signal
 
 There is another potential hazard which could be amplified by the approach we took to address missing variables: that of non-constant risks by week. In other words, coding practices at a site - which might include the information that goes *uncoded* - could vary greatly from week to week. And if, for example, admission rates of patients with a missing diagnosis varied greatly from week to week - because of large changes in the casemix that goes uncoded - this would distort our coefficients of interest.
 
-In order to highlight results that may have been affected by non-constant risks, we produced a second set of models. The details of these models, and how these models were used to identify possible non-constant risks, can be found in @sec-nc-risk.
+In order to highlight results that may have been affected by non-constant risks, we produced a second set of models. The details of these models, and how these models were used to identify possible non-constant risks, can be found in the Model Specification section, below.
 
 ### Additional data processing
 
 Further to the treatment of missing values, we created a new *referral source* variable consisting of six levels, which combined categories from the *attendance source* field. We created 3 new binary variables indicating 1) whether the patient arrived at ED by ambulance (of any type); 2) whether the patient arrived outside daytime hours (or 8pm - 8am); and 3) whether the patient arrived at a weekend.
 
-Importantly, we chose to re-engineer the *primary diagnosis* and *chief complaint* variables. Both of these variables, unmodified, consisted of a large number of categories (850+ for diagnosis and 180+ for complaint). As implied in @sec-incompleteness, if we can substantially reduce the number of predictors whilst minimising the loss of information, we are likely to improve our models. Therefore, for both *primary diagnosis* and *chief complaint*, we grouped together less frequent conditions with the aid of a [3-tier hierarchy (the "ECDS Refset", created by NHSE)](https://digital.nhs.uk/data-and-information/data-collections-and-data-sets/data-sets/emergency-care-data-set-ecds/ecds-guidance). We conducted this grouping at the site level. As a consequence, groupings may vary, slightly, from site to site.
+Importantly, we chose to re-engineer the *primary diagnosis* and *chief complaint* variables. Both of these variables, unmodified, consisted of a large number of categories (9,800+ for diagnosis and 200+ for complaint). As implied [above](#sec-incompleteness), if we can substantially reduce the number of predictors whilst minimising the loss of information, we are likely to improve our models. Therefore, for both *primary diagnosis* and *chief complaint*, we grouped together less frequent conditions with the aid of a [3-tier hierarchy (the "ECDS Refset", created by NHSE)](https://digital.nhs.uk/data-and-information/data-collections-and-data-sets/data-sets/emergency-care-data-set-ecds/ecds-guidance). We conducted this grouping at the site level. As a consequence, groupings may vary, slightly, from site to site.
 
 ##### Diagnosis grouping
 
@@ -1263,7 +1291,7 @@ After testing models that used either *diagnosis* or *complaint,* and assessing 
 
 There were 13 sites that met these criteria. In these cases, we used chief complaint in the model, in place of diagnosis. We therefore had two different model specifications for our principle question, and two corresponding specifications for our models to assess non-constant risks.
 
-### Model specification
+### Model specification {#sec-nc-risk}
 
 #### Primary models
 
@@ -1281,13 +1309,13 @@ Otherwise, we included variables to adjust for casemix (as far as possible), nam
 
 We intentionally omitted contextual factors such as the level of crowding and the inpatient occupancy at the time a patient was treated. Instead, we wanted to leave these factors as possible explanations for any changes seen in admission thresholds. If we were to adjust for such effects they would not (in theory) be visible in the time series.
 
-#### Secondary models (to identify non-constant risks) {#sec-nc-risk}
+#### Secondary models (to identify non-constant risks)
 
 We produced a second set of models with which we aimed to highlight results from the primary models that may have been affected by non-constant risks.
 
 Before fitting this second set of models, we created an additional binary variable which indicated whether the most influential predictor, *diagnosis* (or *complaint*, where applicable), was missing or not. This additional term and interaction terms created between this new variable and the *week* variable were the only differences between the primary and secondary model specifications.
 
-We reasoned that the coefficients of the interaction terms should indicate non-constant risks, if they are present.[^16] To help illustrate our reasoning, we will use @fig-nc-risk, which shows interaction coefficients (and their 80% confidence intervals), ordered by week, for the ED at St. George's Hospital (Tooting). On this plot we have also drawn horizontal lines, showing the median value of these interaction coefficients, and lines at twice and half the median value.[^17] These latter two lines are our upper and lower bounds: if an interaction estimate and its confidence interval is fully outside these bounds, then we judged that the term – and, at root, the proportion of missing diagnoses/complaints in that week – is contributing abnormal explanatory power to the model. In this case we would flag that week's result in our primary charts as being potentially problematic.
+We reasoned that the coefficients of the interaction terms should indicate non-constant risks, if they are present.[^16] To help illustrate our reasoning, we will use @fig-nc-risk, which shows interaction coefficients (and their 80% confidence intervals), ordered by week, for the ED at St. George's Hospital (Tooting). On this plot we have also drawn two horizontal lines, at twice and half the median value of these interaction coefficients.[^17] These two lines represent our upper and lower bounds: if an interaction estimate and its confidence interval is fully outside these bounds, then we judged that the term – and, at root, the proportion of missing diagnoses/complaints in that week – is contributing abnormal explanatory power to the model. In this case we would flag that week's result in our primary charts as being potentially problematic.
 
 [^16]: There may also be non-constant risks, by week, if we were to look at acuity, for example. However, as diagnosis and complaint are likely to be the most influential variables when estimating odds of admission, and the recording of diagnosis and complaint appears to less consistent than for other variables, we have focussed our attention here.
 
@@ -1299,18 +1327,18 @@ We reasoned that the coefficients of the interaction terms should indicate non-c
 #| message: false
 #| warning: false
 #| fig-cap: "Coefficient values for the interaction between the binary 'missing complaint' variable and the week variable (with 80% confidence intervals). Shown for St. George's Hospital (Tooting). If an interaction estimate and its confidence interval appears fully outside the area bounded by parallel dotted lines, then we took this as evidence of a non-constant risk for that week. <br><br>"
-#| column: page
-#| fig-width: 12
-#| fig-asp: 0.618
-#| out-width: "85%"
+## | column: page
+## | fig-width: 12
+## | fig-asp: 0.618
+## | out-width: "85%"
 
 
 df_risk_plots <- readRDS(here("data", "251110_df_risk_plots.RDS"))
   
   df_risk_plots$plot_risk[[7]] +
     scale_y_log10() +
-    annotate(label = "0.5 x mean", "text", y = 0.6, x = as_date("2025-04-01"),  col = "grey20")+
-    annotate(label = "2 x mean", "text", y = 2.3, x = as_date("2025-04-01"),  col = "grey20")+
+    annotate(label = "0.5 x median", "text", y = 0.6, x = as_date("2025-05-01"),  col = "grey20")+
+    annotate(label = "2 x median", "text", y = 2.3, x = as_date("2025-05-01"),  col = "grey20")+
     theme(
           axis.title = element_text(size = 12),
           axis.text = element_text(size = 10),
@@ -1335,7 +1363,7 @@ In @fig-xmr, we have illustrated how the odds of admission vary over time with t
 
 [^18]: To obtain control limits with the standard calculations, we must have values that are normally distributed. We therefore performed these calculations on the the raw model output values (log odds ratios), which are approximately normal, and only then transformed them.
 
-[^19]: According to **(Wheeler / Berwick? - Ask M.A.M. for reference)**, the presence of single data point displaying special cause variation signfies that a process shift has taken place. Moreover, specific patterns involving several common cause data points can also indicate a process shift. Whilst not covered in this document, when a process shift has occured, the control limits are often re-calibrated. We suggest that, if there were to be a re-calibration of the SPC chart
+[^19]: The presence of single data point displaying special cause variation signifies that a process shift has taken place. Moreover, specific patterns involving several common cause data points can also indicate a process shift. Whilst not covered in this document, when a process shift has occurred, the control limits are often re-calibrated. We suggest that, if there were to be a re-calibration of the SPC chart
 
 [^20]: Note that differences are absolute, so there is no lower control limit.
 
@@ -1442,7 +1470,7 @@ The computer code used in this analysis can be found a [GitHub repository](https
 
 ## 2.3 Discussion
 
-Our analysis suggests that it may be feasible to design statistical models and associated tools to allow health systems to track casemix-adjusted admission thresholds in individual emergency departments. The models would need to be tuned to take account of the quality, coverage, and consistency of each department’s Emergency Care Data Set submissions. These models are moderately complex, and care would be required to ensure that users interpret the results appropriately. Users of these tools would likely require training and initial tailored support. Discussions with potential users would help guide decisions about the value and nature of any tool development and deployment.
+Our analysis suggests that it may be feasible to design statistical models and associated tools to allow health systems to track casemix-adjusted admission thresholds in individual emergency departments. The models would need to be tuned to take account of the quality of each department’s Emergency Care Data Set submissions. The models we have proposed are moderately complex, and care would be required to ensure that users interpret the results appropriately. Users of these tools would likely require training and initial tailored support. Discussions with potential users would help guide decisions about the value and nature of any tool development and deployment.
 
 ## 2.4 Conclusion
 
