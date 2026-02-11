@@ -213,7 +213,7 @@ readRDS(here("data", "251204_df_sample_sites.rds")) |>
 
 ```{r}
 #| label: tbl-representation
-#| tbl-cap: "Table comparing selected characteristics of the sample of sites used in this analysis with the characteristics of all qualifying sites across England."
+#| tbl-cap: "A comparison of selected characteristics of EDs in the sample vs. all qualifying EDs in England. These statistics relate to the financial year 2024/25."
 #| echo: false
 #| message: false
 #| column: page
@@ -257,7 +257,7 @@ readRDS(here("data", "251204_table_representation.rds")) |>
     rows =  str_detect(variable, "age|arrival|admitted")
   ) |> 
   tab_row_group(
-    label = "Site-related stats (2023/24):",
+    label = "Site-related stats (2024/25):",
     rows =  str_detect(variable, "att|also|4h|12h")
   ) |> 
   tab_row_group(
