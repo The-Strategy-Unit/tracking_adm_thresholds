@@ -1365,7 +1365,7 @@ In @fig-xmr, we have illustrated how the odds of admission vary over time with t
 
 [^17]: To obtain control limits with the standard calculations, we must have values that are normally distributed. We therefore performed these calculations on the the raw model output values (log odds ratios), which are approximately normal, and only then transformed them.
 
-[^18]: The presence of single data point displaying special cause variation signifies that a process shift has taken place. Moreover, specific patterns involving several common cause data points can also indicate a process shift. Whilst not covered in this document, when a process shift has occurred, the control limits are often re-calibrated. We suggest that, if there were to be a re-calibration of the SPC chart
+[^18]: The presence of a single data point displaying special cause variation signifies that a process shift has taken place. Moreover, specific patterns involving several common cause data points can also indicate a process shift. Whilst not covered in this document, when a process shift has occurred, the control limits are often re-calibrated.
 
 [^19]: Note that differences are absolute, so there is no lower control limit.
 
