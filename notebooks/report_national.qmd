@@ -462,7 +462,7 @@ The computer code used in this analysis can be found a [GitHub repository](https
 
 ## 1.3 Results
 
-The aim of this analysis was to describe national-level changes in threshold for hospital admission via ED. We used a logistic GAM to estimate the casemix-adjusted odds of admission over time. Model coefficients corresponding to each quarter of each financial year in the study period are the values of interest. We show these values, and their 95% confidence intervals, in @fig-odds-quarter. The reference level (with an odds ratio of 1) is the first quarter in the study period: Quarter 1 of 2019/20.
+The aim of this analysis was to describe national-level changes in the threshold for hospital admission via ED. We used a logistic GAM to estimate the casemix-adjusted odds of admission over time. Model coefficients corresponding to each quarter of each financial year in the study period are the values of interest. We show these values, and their 95% confidence intervals, in @fig-odds-quarter. The reference level (with an odds ratio of 1) is the first quarter in the study period: Quarter 1 of 2019/20.
 
 We might divide the time span covered by @fig-odds-quarter into three distinct periods: 1) the pre-pandemic period; 2) the pandemic (and subsequent recovery) period; and 3) the post-pandemic period. The most prominent feature of the plot is the rise in the casemix-adjusted odds of admission during, and in the wake of, the pandemic. The results indicate that the odds of a particular patient with a specific condition being admitted in this period were generally 10-20% higher than at other times.
 
