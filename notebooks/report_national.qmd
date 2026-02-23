@@ -109,7 +109,7 @@ In this report, we address two questions relating to clinical admission threshol
 
 Our first analysis covers attendances taking place between April 2019 and March 2025. We examined a broadly representative subset of 16 Type 1 (consultant-led 24/7) emergency departments in England. We controlled for a patient’s age, sex, ethnicity, deprivation, acuity, diagnosis, arrival mode, referral source, and time (day of the week and hour) of attendance.
 
-An earlier study found that admission thresholds increased steadily and substantially between 2010 and 2016. This new analysis suggests that these strong secular trends appear to have ended by 2019, and have been replaced by modest fluctuations in thresholds, without a clear overall direction.
+An earlier study found that admission thresholds increased steadily and substantially between 2010 and 2015. This new analysis suggests that these strong secular trends appear to have ended by 2019, and have been replaced by modest fluctuations in thresholds, without a clear overall direction.
 
 Having adjusted for clinical casemix, we find that admission thresholds fell moderately but abruptly at the start of the COVID-19 pandemic, returning to pre-pandemic levels by April 2022. During the pandemic period, patients were approximately 10% more likely to be admitted, on average, than patients with similar needs presenting at other times.
 
@@ -129,7 +129,7 @@ In this section of the report, we explore whether and how admission thresholds w
 
 The clinical characteristics, or casemix, of patients attending emergency departments is highly heterogeneous. Some patients present with needs that almost always require admission (e.g., sepsis), whilst others (e.g., those with an ankle sprain) are very rarely admitted. Changes in the mix of patients over time, might explain why more patients are admitted in some periods than in others. In this project, the interest is in changes in admission thresholds over and above these casemix effects.
 
-[Earlier work](https://emj.bmj.com/content/34/12/773) explored trends in casemix-adjusted admission thresholds between 2010 and 2016, and concluded that these thresholds increased substantially and steadily over this period. 
+[Earlier work](https://emj.bmj.com/content/34/12/773) explored trends in casemix-adjusted admission thresholds between 2010 and 2015, and concluded that these thresholds increased substantially and steadily over this period. 
 
 Contextual factors, such as ED crowding and inpatient bed occupancy might also influence whether a patient is admitted from ED to hospital. [A 2022 study](https://emj.bmj.com/content/39/3/174) found that admission decisions were modestly associated with these contextual factors, and so should be considered as potential explanations for any observed change in casemix-adjusted admission thresholds.
 
