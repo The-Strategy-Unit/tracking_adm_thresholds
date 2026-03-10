@@ -1357,17 +1357,23 @@ df_risk_plots <- readRDS(here("data", "251110_df_risk_plots.RDS"))
 
 ### Presentation of results
 
+#### The XmR chart
+
 In @fig-xmr, we have illustrated how the odds of admission vary over time with the aid of a particular type of Statistical Process Control (SPC) chart - the XMR chart. This chart has two components, the “X” plot and the “mR” plot:
 
 -   The “X” plot (at the top of the chart) displays how the outcome of interest changes over time. Three horizontal lines represent the mean value and the upper and lower “control limits" (at 3 standard deviations from the mean value).[^17] These control limits define the expected range of variation for the process in question. If a point falls between the upper and lower control limits, then the result is considered within the bounds of natural - or “common cause” - variation, and the process is deemed stable. If, on the other hand, a point is outside the control limits, this indicates that the difference from the process mean should not be attributed to random variation. In SPC terms, there is a “special cause” for the variation.[^18]
 
--   The “mR” (moving range) plot, is displayed below the X plot, on an identical horizontal axis. It shows whether the (absolute) difference between consecutive points on the X plot might be considered abnormal. Horizontal lines on the plot show the mean value and the upper control limit (at 3 standard deviations from the mean).[^19] A large change - positive or negative - between consecutive points in the X plot may result in an mR point that is above the upper control limit. In this case, the change in the outcome of interest (between consecutive points) is greater than might be expected for this process.
+-   The “mR” (moving range) plot, is displayed below the X plot, on an identical horizontal axis. This chart shows the process variation. Horizontal lines on the plot show the mean value and the upper control limit of the variation (at 3 standard deviations from the mean).[^19] A large change - positive or negative - between consecutive points in the X plot may result in an mR point that is above the upper control limit. In this case, the change in the outcome of interest (between consecutive points) is greater than might be expected for this process.
 
 [^17]: To obtain control limits with the standard calculations, values should be normally distributed. We therefore performed these calculations on the the raw model output values (log odds ratios), which are approximately normal, and only then transformed them to the linear scale.
 
 [^18]: The presence of a single data point displaying special cause variation signifies that a process shift has taken place. Moreover, specific patterns involving several common cause data points can also indicate a process shift. Whilst not covered in this document, when a process shift has occurred, the control limits are often re-calibrated.
 
 [^19]: Note that differences are absolute, so there is no lower control limit.
+
+Returning to our specific case, XmR charts may prove useful if we wish to see whether an intervention, or series of interventions,[^20] has had a significant and sustained influence on admission thresholds.
+
+[^20]: Such as we might see as a consequence of the NHS neighbourhood plan
 
 ```{r}
 #| label: fig-xmr
@@ -1413,9 +1419,7 @@ b <- df_xmr_plots$plot_mr[[7]]+
 a/b
 ```
 
-Returning to our specific case, XmR charts may prove useful if we wish to see whether an intervention, or series of interventions,[^20] has had a significant and sustained influence on admission thresholds.
-
-[^20]: Such as we might see as a consequence of the NHS neighbourhood plan
+#### Measuring and highlighting process change
 
 Looking at @fig-xmr, which shows St George's Hospital, it appears (from the X plot) that the casemix-adjusted odds of admission were relatively consistent from April until the last week in September. At this point, the odds of admission rise sharply (which corresponds to a fall in the threshold for admission). What should we read into this?
 
