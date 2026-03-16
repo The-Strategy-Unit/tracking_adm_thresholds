@@ -95,6 +95,48 @@ plot_additional_coeffs <- function(df) {
     legend.position = "none"
   )
 }
+
+
+
+plot_rebase_step <- function(df) {
+  
+df |> 
+  ggplot(aes(x, y)) +
+  geom_point(aes(x, y, col = flag_risk))+
+  geom_line(aes(x, mean_col, group = rebase_group), lty = "dashed") +
+  geom_line(aes(x, lpl, group = rebase_group), lty = "dashed") +
+  geom_line(aes(x, upl, group = rebase_group), lty = "dashed") +
+  scale_color_manual(
+    values = c("grey20", "indianred"),
+    name = "Evidence of non-constant risks:",
+    labels = c("No", "Yes")
+  ) +
+  geom_line(aes(x, y)) +
+  theme_minimal() +
+  scale_y_log10(
+    limits = c(0.8, 1.8),
+    labels = c(0.8, 1, 1.2, 1.4, 1.6 , 1.8),
+    breaks = c(0.8, 1, 1.2, 1.4, 1.6 , 1.8)
+    ) +
+  theme(
+    axis.title = element_text(size = 7),
+    legend.position = "none"
+  ) +
+  scale_x_date(
+    date_breaks = "month",
+    date_labels = "%b %Y",
+    limits = c(as_date("2025-04-07"), as_date("2026-01-12"))
+    ) +
+  labs(
+    # title = str_c("Salford Royal", "\n"),
+    x = "\nDate",
+    y = str_c(
+      "Casemix-adjusted odds of admission (log scale)\n(Reference category: w/c April 7th 2025)\n"
+    )
+  )
+}
+
+
 ```
 
 # Executive Summary
@@ -939,11 +981,11 @@ coeffs |>
 
 In the second part of this report, we propose methods, founded on statistical models, that would allow local areas to monitor whether casemix-adjusted admission thresholds are changing over time.
 
-We have imagined that such information might ultimately be incorporated in a simple software application (app). Using this app, a user might choose any one of 180 Type 1 (24 hour, consultant-led) emergency departments (EDs) and be shown how admission thresholds at that site are changing over time. The app could also include graphics and text summaries to illustrate how data quality and model-design choices have influenced the trends they are shown.
+We have imagined that such information might ultimately be incorporated in a simple software application (app). Using this app, a user might choose any one of 180 Type 1 (24 hour, consultant-led) emergency departments (EDs) and be shown how admission thresholds at that site are changing. The app could also include graphics and text summaries to illustrate how data quality and model-design choices have influenced the trends they are shown.
 
 ## 2.2 Methods
 
-For each Type 1 ED, we aimed to show if, and by how much, thresholds for admission are changing over time. To achieve this, we fitted regression models to emergency care data to estimate the casemix-adjusted odds of admission for each week. The higher the odds of admission, the lower the admission threshold.
+For each Type 1 ED, we aimed to show if, and by how much, thresholds for admission are changing over time. To achieve this, we fitted regression models to emergency care data to estimate the casemix-adjusted odds of admission for each week (the higher the odds of admission, the lower the admission threshold).
 
 ### Data source
 
@@ -1058,7 +1100,7 @@ We chose to use records in which the patient arrived at a ED on or after April 1
 
 There was a further balance to achieve when thinking about an end date to our period of study. With an app in mind, we wanted our estimates of admission thresholds to run close to the current date, since the objective would be to present relevant and actionable information. However, data quality can be low for very recent data, due to the way data is incrementally flowed from providers to the ECDS. We therefore programmed a rolling end date to our study, and a buffer period, such that the most recent data point would cover the last complete week (Mon-Sun) occurring at least 21 days before the computer code was executed.[^8] This buffer period should increase the chances that all sites had submitted high quality data across every field.
 
-[^8]: In the case of the text and graphics presented in this document, the computer code was executed on November 10th 2025, which makes the last complete week the 13-19th October 2025.
+[^8]: In the case of the text and graphics presented in Part 2 (excepting Figs. 18-21), the computer code was executed on November 10th 2025, which makes the last complete week the 13-19th October 2025.
 
 #### Data quality by site
 
@@ -1319,7 +1361,7 @@ Before fitting this second set of models, we created an additional binary variab
 
 We reasoned that the coefficients of the interaction terms should indicate non-constant risks, if they are present.[^15] To help illustrate our reasoning, we will use @fig-nc-risk, which shows interaction coefficients (and their 80% confidence intervals), ordered by week, for the ED at St. George's Hospital (Tooting). On this plot we have also drawn two horizontal lines, at twice and half the median value of these interaction coefficients.[^16] These two lines represent our upper and lower bounds: if an interaction estimate and its confidence interval is fully outside these bounds, then we judged that the term – and, at root, the proportion of missing diagnoses/complaints in that week – is contributing abnormal explanatory power to the model. In this case we would flag that week's result in our primary charts as being potentially problematic.
 
-[^15]: There may also be non-constant risks, by week, if we were to look at acuity, for example. However, as diagnosis and complaint are likely to be the most influential variables when estimating odds of admission, and the recording of diagnosis and complaint appears to less consistent than for other variables, we have focussed our attention here.
+[^15]: If we were to look at acuity, for example, we may also observe non-constant risks, by week. However, as diagnosis and complaint are likely to be the most influential variables when estimating odds of admission, and the recording of diagnosis and complaint appears to less consistent than for other variables, we have focussed our attention here.
 
 [^16]: The median value was used as a reference level, in preference to specific odds values, as this removed the risk of the reference category being abnormal.
 
@@ -1355,25 +1397,41 @@ df_risk_plots <- readRDS(here("data", "251110_df_risk_plots.RDS"))
     )
 ```
 
+<br>
+
 ### Presentation of results
+
+<!--#  The purpose of this work is to (propose a way to /, a way to monitor admission thresholds / and monitor.... find a way to illustrate / illustrate/ find a means to illustrate' ...-->
+
+We are seeking to illustrate variation in ED-level admission thresholds over time. As noted, various factors and processes will influence whether a patient is admitted to hospital from the ED, over and above their condition.[^17] Even in a period of stability, processes will vary, randomly, from week to week. The question is, then, how can we tell when the observed variation is not random, but the result of a significant and sustained process change?
+
+[^17]: Moreover, some factors and processes will influence whether a patient is *recorded* as being admitted to hospital. As we are inadvertantly measuring these processes too, we should be careful when attributing process changes.
+
+<!--# and we want to know when is this variation random and when is the variation is so great that it implies process change. Further to a patient's condition, various processes will influence whether they are admitted to hospital from the ED.(18 Moreover, some processes will influence whether a patient is recorded as being admitted to hospital. As we are inadvertantly measuring these processes too, we should be careful when attributing process changes.)-->
+
+<!--# We can use the XmR chart, together with some common SPC guidelines, to identify when fundamental changes to one or more of these processes have taken place.  -->
+
+<!--#  XmR charts - a type of Statistical Process Control (SPC) chart - may prove useful if we wish to see whether an intervention, or series of interventionshas had a significant and sustained influence on admission thresholds. for changes significant process. Random variation The odds of admission will change from week to week. at what point the variation is so great that it implies process change -->
 
 #### The XmR chart
 
-In @fig-xmr, we have illustrated how the odds of admission vary over time with the aid of a particular type of Statistical Process Control (SPC) chart - the XMR chart. This chart has two components, the “X” plot and the “mR” plot:
+The XmR chart is a type of Statistical Process Control (SPC) chart. We can use XmR charts - together with some common SPC rules- to identify when unusual factors have influenced a system or when fundamental changes to one or more of the system's processes have taken place.
 
--   The “X” plot (at the top of the chart) displays how the outcome of interest changes over time. Three horizontal lines represent the mean value and the upper and lower “control limits" (at 3 standard deviations from the mean value).[^17] These control limits define the expected range of variation for the process in question. If a point falls between the upper and lower control limits, then the result is considered within the bounds of natural - or “common cause” - variation, and the process is deemed stable. If, on the other hand, a point is outside the control limits, this indicates that the difference from the process mean should not be attributed to random variation. In SPC terms, there is a “special cause” for the variation.[^18]
+<!--# XmR charts - a type of Statistical Process Control (SPC) chart - may prove useful if we wish to test whether an intervention, or series of interventions, has had a significant and sustained influence on admission thresholds. link between variation and process change Further to a patient's condition, various processes will influence whether they are admitted to hospital from the ED.We can use the XmR chart, together with some common SPC guidelines, to identify when fundamental changes to one or more of these processes have taken place.  -->
 
--   The “mR” (moving range) plot, is displayed below the X plot, on an identical horizontal axis. This chart shows the process variation. Horizontal lines on the plot show the mean value and the upper control limit of the variation (at 3 standard deviations from the mean).[^19] A large change - positive or negative - between consecutive points in the X plot may result in an mR point that is above the upper control limit. In this case, the change in the outcome of interest (between consecutive points) is greater than might be expected for this process.
+In @fig-xmr, we use an XmR chart to display how the odds of admission via ED (at St. George's Hospital, Tooting) have varied over time. The XmR chart has two components, the “X” plot and the “mR” plot:
 
-[^17]: To obtain control limits with the standard calculations, values should be normally distributed. We therefore performed these calculations on the the raw model output values (log odds ratios), which are approximately normal, and only then transformed them to the linear scale.
+-   The “X” plot (at the top of the chart) displays how the outcome of interest changes over time. Three horizontal lines represent the mean value and the upper and lower “control limits" (at 3 sigma from the mean value).[^18] These control limits define the expected range of variation for the process in question. If a point falls between the upper and lower control limits, then the result is considered within the bounds of natural - or “common cause” - variation, and the process is deemed stable. If, on the other hand, a point is outside the control limits, this indicates that the difference from the process mean should not be attributed to random variation. In SPC terms, there is a “special cause” for the variation.[^19]
 
-[^18]: The presence of a single data point displaying special cause variation signifies that a process shift has taken place. Moreover, specific patterns involving several common cause data points can also indicate a process shift. Whilst not covered in this document, when a process shift has occurred, the control limits are often re-calibrated.
+-   The “mR” (moving range) plot, is displayed below the X plot, on an identical horizontal axis. This chart emphasises the process variation. Horizontal lines on the plot show the mean value and the upper control limit of the variation (at 3 sigma from the mean).[^20] A large change - positive or negative - between consecutive points in the X plot may result in an mR point that is above the upper control limit. In this case, the change in the outcome of interest (between consecutive points) is greater than might be expected for this process.
 
-[^19]: Note that differences are absolute, so there is no lower control limit.
+[^18]: To obtain control limits with the standard calculations, values should be normally distributed. We therefore performed these calculations on the the raw model output values (log odds ratios), which are approximately normal, and only then transformed them to the linear scale.
 
-Returning to our specific case, XmR charts may prove useful if we wish to see whether an intervention, or series of interventions,[^20] has had a significant and sustained influence on admission thresholds.
+[^19]: The presence of a single data point displaying special cause variation signifies that a process shift has taken place. Moreover, specific patterns involving several common cause data points can also indicate a process shift. Whilst not covered in this document, when a process shift has occurred, the control limits are often re-calibrated.
 
-[^20]: Such as we might see as a consequence of the NHS neighbourhood plan
+[^20]: Note that differences are absolute, so there is no lower control limit.
+
+Looking at @fig-xmr, it appears (from the X plot) that the casemix-adjusted odds of admission at St. George’s were relatively consistent from April until the last week in September. At this point, the odds of admission rose sharply (indicating a fall in the threshold for admission). From late September, there are three consecutive points above the upper control limit. What should we read into this rise? Does this signify a clinical process change, or is it an artefact of data quality?
 
 ```{r}
 #| label: fig-xmr
@@ -1419,13 +1477,15 @@ b <- df_xmr_plots$plot_mr[[7]]+
 a/b
 ```
 
-#### Measuring and highlighting process change
+#### Highlighting data quality concerns
 
-Looking at @fig-xmr, which shows St George's Hospital, it appears (from the X plot) that the casemix-adjusted odds of admission were relatively consistent from April until the last week in September. At this point, the odds of admission rise sharply (which corresponds to a fall in the threshold for admission). What should we read into this?
+Special-cause variation signifies that unusual factors or processes are influencing the outcome at the time of measurement. In @fig-xmr, above, the special-cause variation at the end of the time series seems to be the result of an abrupt change, rather than an initiative that has produced change over an extended period.
 
-Firstly, we see that, from the end of September, there is clear evidence of special-cause variation. This indicates the existence of unique or unusual factors influencing the admission threshold at that time, that are not normally present. The mR plot can give us an indication of the nature of these unusual factors. That is to say that, since the weekly change at the end of September is highly abnormal, the special cause variation in the X plot is likely to be the result of an isolated, quickly-appearing event, rather than a initiative that has produced change over an extended period.
+<!--#  The mR plot can give us an indication of the nature of these unusual factors. That is to say that, since the weekly change at the end of September is highly abnormal, the special cause variation in the X plot is likely -->
 
-Given this context, one of the most likely causes here is a data quality issue. And, if we progress to @fig-xmr-risk - which includes information about weeks affected by non-constant risk - we find that non-constant risks *are* flagged in the last few weeks of the period. In this case, then, we should question the validity of these final data points. If we were to re-run the analysis at a later date (as one might, were these methods incorporated into a tool) it is possible that refreshed data would give us a more robust picture of the admission threshold in late September and early October.
+Given the context here (an abrupt change at the end of the series), one of the most likely causes is a data quality issue. If we move on to examine @fig-xmr-risk - in which we have highlighted points affected by non-constant risk (in red) - we find that non-constant risks are indeed present in the last few weeks of the period.[^21] Due to this fact, we should question the validity of the final four data points. If we were to re-run the analysis at a later date (as one might, were these methods incorporated into a tool), it is possible that refreshed data would give us a more robust picture of the admission threshold in late September and early October.
+
+[^21]: The points are highlighted on the basis of results from the secondary models, which will have suggested that the coding of diagnosis (or complaint) in the last few points of the time series was inconsistent with coding in the rest of the series.
 
 ```{r}
 #| label: fig-xmr-risk
@@ -1469,6 +1529,131 @@ d <- df_xmr_plots$plot_mr[[7]]+
   
 c/d   
 ```
+
+#### Detecting significant and sustained changes
+
+If we were monitoring the admission threshold at a given ED on a regular basis, we would likely be seeking evidence of meaningful changes to the processes which influence this threshold. What, then, is the relationship between the variation we see in the threhold and process change?
+
+The [Making Data Count (NHSE, 2019)](https://www.england.nhs.uk/wp-content/uploads/2019/12/making-data-count-getting-started-2019.pdf) publication outlines four SPC rules that can be applied to the X chart to identify a process change. These are the observation of either:
+
+-   A single point further than 3 sigma from the process mean (i.e. outside the control limits)
+
+-   Any two of three consecutive points further than 2 sigma from the process mean
+
+-   Seven consecutive points all above / all below the process mean
+
+-   \[Seven\] points with consecutively increasing / decreasing values [^22]
+
+[^22]: *Making Data Count* specifies "six consecutive points." However, we have used the `NHSRplotthedots` package to label process changes, which uses a rule of seven consecutive increasing or decreasing points. In any case, limit changes based on consecutive increasing/decreasing points are far less common than those triggered by the "seven consecutive points all above / all below the process mean" rule.
+
+The first two of these rules will be more likely to signal rapid changes or "shocks" to the system.[^23] Shocks could be due to, for example, events like industrial action, holidays, or temporary data quality issues (as we have seen above).
+
+[^23]: And, as such, are likely to be factors rather than processes
+
+The latter two rules rely on trends of several points. In our case, seven points represents a trend lasting seven weeks. These last rules are therefore more likely to indicate a sustained process change.
+
+With any process change comes a probable change in the normal performance limits of the system. Therefore, once a process change has been detected (and, ideally, verified and understood), the process mean and the control limits on the XmR chart should be recalculated. For our purposes, we have chosen to recalculate these elements only when significant and *sustained* process changes are detected.[^24] This is because our focus here is not on flagging system shocks but on monitoring sustained changes that could provide feedback to the National Neighbourhood Health Implementation Programme.
+
+[^24]: In an app, limits would likely be updated automatically when a process shift is detected. The fact that seven points would be required for any update reduces the risk that limits are reset due to data quality issues or shocks, which are of less interest to us here.
+
+<!--# Moreover, if we were to work these automatically update the limits when a process shift is detected. and automatic updates based on a three or fewer points the process too sensitive to data quality issues or immaterial shocks. -->
+
+<!--# Some shifts /// Such shifts may be intentional (e.g. due to the National Neighbourhood Health Implementation Programme), or not. /// changes in the threshold that are not due to chance. /// significant changes to the thresholds. Such changes might indicate meaningful shifts in the processes which influence these thresholds, and may be intentional (e.g. due to the National Neighbourhood Health Implementation Programme), or not. /// If monitoring admission thresholds at a given ED on a regular basis, we would likely wish to identify significant changes to the thresholds. Such changes might indicate meaningful shifts in the processes which influence these thresholds, and may be intentional (e.g. due to the National Neighbourhood Health Implementation Programme), or not. /// Given our focus on the neighbours programme and sustained change.. Some changes are of lesser interest, for our purposes. are significant but short-lived changes due to "shocks" to the system, like industrial action, holidays, or temporary data quality issues (as we have seen above). -->
+
+<!--#  Further to a patient's condition, various processes will influence whether they are admitted to hospital from the ED. We can use the XmR chart, together with some common SPC guidelines, to identify when fundamental changes to one or more of these processes have taken place. Moreover, some processes will influence whether a patient is recorded as being admitted to hospital. As we are inadvertantly measuring these processes too, we should be careful when attributing process changes.-->
+
+<!--# Some of these identify shocks. We are not interested in shock so...the determine the odds of admission, there are a few canonical Statistical Process Control (SPC) rules are guidelines used to interpret control charts, helping to identify variations in processes and maintain quality control. From the Making Data Count (NHSE, 2019) publication Typically, by monitoring the variation in the process, we can determine whether The presence of a single data point displaying special cause variation signifies that a process shift has taken place. Moreover, specific patterns involving several common cause data points can also indicate a process shift. Whilst not covered in this document, when a process shift has occurred, the control limits are often re-calibrated.  -->
+
+<!--# We have illustrated in the figures below.   implemented these rules with the aid of the R package -->
+
+In the figures below, we have illustrated how the process mean and control limits of an X chart might evolve over an extended time period. Using data from the ED at Salford Royal, we display a time series (of the odds of admission) at 12 weeks, 26 weeks, 28 weeks, and 40 weeks from the start of measurement. We implemented our chosen rules with the aid of the `NHSRplotthedots` R package.[^25]
+
+[^25]: Smith T, Reading C, Wellesley-Miller S, Turner Z, Jemmett T, Mainey C, MacKintosh J, Fabietti M, Barton F (2025). *NHSRplotthedots: Draw XmR Charts for NHS 'Making Data Count' Programme*. R package version 0.2.2, [https://nhsrplotthedots.nhsrcommunity.com](https://nhsrplotthedots.nhsrcommunity.com/).
+
+@fig-limit-reset-1 shows the situation 12 weeks after measurement of the admission threshold begins. To establish a robust mean and process limits, the `NHSRplotthedots` package requires at least 12 points in the series.[^26] The process limits and mean will continue to be refined until there are 20 points in the series.
+
+[^26]: There is no consensus on the number of points in the needed to establish reliable limits. Sources suggest between 5 and 30 points. A number closer to the upper value of this range will produce more robust limits. The `NHSRplotthedots` package constructs limits based on 12+ points. If there are fewer than 12 points in a series, "trial limits" will be drawn. See <https://nhsrplotthedots.nhsrcommunity.com/articles/number-of-points-required.html> for further details.
+
+In @fig-limit-reset-2, we see that the results from weeks 23 to 26 are above the upper control limit. Special cause variation is therefore present, but, based on the rules we are using, there is no recalculation of the process mean and limits at this time. However, we do see a trend of 5 consecutive points above the process mean. If the points in the next two weeks continue this trend then the mean and limits will be reset.
+
+In @fig-limit-reset-3, we see that this is indeed what happens. A trend of seven points above the original process mean indicates a significant and sustained change in the process. A new (trial) mean and (trial) limits are calculated, based on the variation in the seven point trend. Readings from subsequent weeks will contribute to these limits and they will become more robust as time passes. At week 40, shown in @fig-limit-reset-4, we see the mean and limits have been slightly revised, but points remain within the new limits.
+
+<!--# Note, without we, cannot tell whether the process change exists or is good or bad Now seven points above the original mean which qualifies (according to our rules) as a process change. This triggers new "trial" control limits, based on the variation of those same seven points.There have been no addtional week 40, but the new process mean and control limits have been revised (and are more robust) due to the increased number of points (now 19) used to calculate them.  -->
+
+::: panel-tabset
+## Week 12
+
+```{r}
+#| label: fig-limit-reset-1
+#| echo: false
+#| message: false
+#| warning: false
+#| fig-cap: "An X chart for Salford Royal, showing the casemix-adjusted odds of admission over the 12 weeks following April 7th 2025.<br><br>"
+##| fig-width: 12
+##| fig-asp: 0.618
+##| out-width: "85%"
+
+# | column: page
+
+readRDS(here("data", "260312_limit_reset_12_weeks.rds")) |> 
+  plot_rebase_step()
+
+```
+
+## Week 26
+
+```{r}
+#| label: fig-limit-reset-2
+#| echo: false
+#| message: false
+#| warning: false
+#| fig-cap: "An X chart for Salford Royal, showing the casemix-adjusted odds of admission over the 26 weeks following April 7th 2025.<br><br>"
+##| fig-width: 12
+##| fig-asp: 0.618
+##| out-width: "85%"
+
+# | column: page
+
+readRDS(here("data", "260312_limit_reset_26_weeks.rds")) |> 
+  plot_rebase_step()
+```
+
+## Week 28
+
+```{r}
+#| label: fig-limit-reset-3
+#| echo: false
+#| message: false
+#| warning: false
+#| fig-cap: "An X chart for Salford Royal, showing the casemix-adjusted odds of admission over the 28 weeks following April 7th 2025.<br><br>"
+##| fig-width: 12
+##| fig-asp: 0.618
+##| out-width: "85%"
+
+# | column: page
+
+readRDS(here("data", "260312_limit_reset_28_weeks.rds")) |> 
+  plot_rebase_step()
+```
+
+## Week 40
+
+```{r}
+#| label: fig-limit-reset-4
+#| echo: false
+#| message: false
+#| warning: false
+#| fig-cap: "An X chart for Salford Royal, showing the casemix-adjusted odds of admission over the 40 weeks following April 7th 2025.<br><br>"
+##| fig-width: 12
+##| fig-asp: 0.618
+##| out-width: "85%"
+
+# | column: page
+
+readRDS(here("data", "260312_limit_reset_40_weeks.rds")) |> 
+  plot_rebase_step()
+```
+:::
 
 ### Reproducibility
 
