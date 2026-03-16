@@ -1421,15 +1421,13 @@ The XmR chart is a type of Statistical Process Control (SPC) chart. We can use X
 
 In @fig-xmr, we use an XmR chart to display how the odds of admission via ED (at St. George's Hospital, Tooting) have varied over time. The XmR chart has two components, the “X” plot and the “mR” plot:
 
--   The “X” plot (at the top of the chart) displays how the outcome of interest changes over time. Three horizontal lines represent the mean value and the upper and lower “control limits" (at 3 sigma from the mean value).[^18] These control limits define the expected range of variation for the process in question. If a point falls between the upper and lower control limits, then the result is considered within the bounds of natural - or “common cause” - variation, and the process is deemed stable. If, on the other hand, a point is outside the control limits, this indicates that the difference from the process mean should not be attributed to random variation. In SPC terms, there is a “special cause” for the variation.[^19]
+-   The “X” plot (at the top of the chart) displays how the outcome of interest changes over time. Three horizontal lines represent the mean value and the upper and lower “control limits" (at 3 sigma from the mean value).[^18] These control limits define the expected range of variation for the process in question. If a point falls between the upper and lower control limits, then the result is considered within the bounds of natural - or “common cause” - variation, and the process is deemed stable. If, on the other hand, a point is outside the control limits, this indicates that the difference from the process mean should not be attributed to random variation. In SPC terms, there is a “special cause” for the variation.
 
--   The “mR” (moving range) plot, is displayed below the X plot, on an identical horizontal axis. This chart emphasises the process variation. Horizontal lines on the plot show the mean value and the upper control limit of the variation (at 3 sigma from the mean).[^20] A large change - positive or negative - between consecutive points in the X plot may result in an mR point that is above the upper control limit. In this case, the change in the outcome of interest (between consecutive points) is greater than might be expected for this process.
+-   The “mR” (moving range) plot, is displayed below the X plot, on an identical horizontal axis. This chart emphasises the process variation. Horizontal lines on the plot show the mean value and the upper control limit of the variation (at 3 sigma from the mean).[^19] A large change - positive or negative - between consecutive points in the X plot may result in an mR point that is above the upper control limit. In this case, the change in the outcome of interest (between consecutive points) is greater than might be expected for this process.
 
 [^18]: To obtain control limits with the standard calculations, values should be normally distributed. We therefore performed these calculations on the the raw model output values (log odds ratios), which are approximately normal, and only then transformed them to the linear scale.
 
-[^19]: The presence of a single data point displaying special cause variation signifies that a process shift has taken place. Moreover, specific patterns involving several common cause data points can also indicate a process shift. Whilst not covered in this document, when a process shift has occurred, the control limits are often re-calibrated.
-
-[^20]: Note that differences are absolute, so there is no lower control limit.
+[^19]: Note that differences are absolute, so there is no lower control limit.
 
 Looking at @fig-xmr, it appears (from the X plot) that the casemix-adjusted odds of admission at St. George’s were relatively consistent from April until the last week in September. At this point, the odds of admission rose sharply (indicating a fall in the threshold for admission). From late September, there are three consecutive points above the upper control limit. What should we read into this rise? Does this signify a clinical process change, or is it an artefact of data quality?
 
@@ -1483,9 +1481,9 @@ Special-cause variation signifies that unusual factors or processes are influenc
 
 <!--#  The mR plot can give us an indication of the nature of these unusual factors. That is to say that, since the weekly change at the end of September is highly abnormal, the special cause variation in the X plot is likely -->
 
-Given the context here (an abrupt change at the end of the series), one of the most likely causes is a data quality issue. If we move on to examine @fig-xmr-risk - in which we have highlighted points affected by non-constant risk (in red) - we find that non-constant risks are indeed present in the last few weeks of the period.[^21] Due to this fact, we should question the validity of the final four data points. If we were to re-run the analysis at a later date (as one might, were these methods incorporated into a tool), it is possible that refreshed data would give us a more robust picture of the admission threshold in late September and early October.
+Given the context here (an abrupt change at the end of the series), one of the most likely causes is a data quality issue. If we move on to examine @fig-xmr-risk - in which we have highlighted points affected by non-constant risk (in red) - we find that non-constant risks are indeed present in the last few weeks of the period.[^20] Due to this fact, we should question the validity of the final four data points. If we were to re-run the analysis at a later date (as one might, were these methods incorporated into a tool), it is possible that refreshed data would give us a more robust picture of the admission threshold in late September and early October.
 
-[^21]: The points are highlighted on the basis of results from the secondary models, which will have suggested that the coding of diagnosis (or complaint) in the last few points of the time series was inconsistent with coding in the rest of the series.
+[^20]: The points are highlighted on the basis of results from the secondary models, which will have suggested that the coding of diagnosis (or complaint) in the last few points of the time series was inconsistent with coding in the rest of the series.
 
 ```{r}
 #| label: fig-xmr-risk
@@ -1542,19 +1540,19 @@ The [Making Data Count (NHSE, 2019)](https://www.england.nhs.uk/wp-content/uploa
 
 -   Seven consecutive points all above / all below the process mean
 
--   \[Seven\] points with consecutively increasing / decreasing values [^22]
+-   \[Seven\] points with consecutively increasing / decreasing values [^21]
 
-[^22]: *Making Data Count* specifies "six consecutive points." However, we have used the `NHSRplotthedots` package to label process changes, which uses a rule of seven consecutive increasing or decreasing points. In any case, limit changes based on consecutive increasing/decreasing points are far less common than those triggered by the "seven consecutive points all above / all below the process mean" rule.
+[^21]: *Making Data Count* specifies "six consecutive points." However, we have used the `NHSRplotthedots` package to label process changes, which uses a rule of seven consecutive increasing or decreasing points. In any case, limit changes based on consecutive increasing/decreasing points are far less common than those triggered by the "seven consecutive points all above / all below the process mean" rule.
 
-The first two of these rules will be more likely to signal rapid changes or "shocks" to the system.[^23] Shocks could be due to, for example, events like industrial action, holidays, or temporary data quality issues (as we have seen above).
+The first two of these rules will be more likely to signal rapid changes or "shocks" to the system.[^22] Shocks could be due to, for example, events like industrial action, holidays, or temporary data quality issues (as we have seen above).
 
-[^23]: And, as such, are likely to be factors rather than processes
+[^22]: And, as such, are likely to be factors rather than processes
 
 The latter two rules rely on trends of several points. In our case, seven points represents a trend lasting seven weeks. These last rules are therefore more likely to indicate a sustained process change.
 
-With any process change comes a probable change in the normal performance limits of the system. Therefore, once a process change has been detected (and, ideally, verified and understood), the process mean and the control limits on the XmR chart should be recalculated. For our purposes, we have chosen to recalculate these elements only when significant and *sustained* process changes are detected.[^24] This is because our focus here is not on flagging system shocks but on monitoring sustained changes that could provide feedback to the National Neighbourhood Health Implementation Programme.
+With any process change comes a probable change in the normal performance limits of the system. Therefore, once a process change has been detected (and, ideally, verified and understood), the process mean and the control limits on the XmR chart should be recalculated. For our purposes, we have chosen to recalculate these elements only when significant and *sustained* process changes are detected.[^23] This is because our focus here is not on flagging system shocks but on monitoring sustained changes that could provide feedback to the National Neighbourhood Health Implementation Programme.
 
-[^24]: In an app, limits would likely be updated automatically when a process shift is detected. The fact that seven points would be required for any update reduces the risk that limits are reset due to data quality issues or shocks, which are of less interest to us here.
+[^23]: In an app, limits would likely be updated automatically when a process shift is detected. The fact that seven points would be required for any update reduces the risk that limits are reset due to data quality issues or shocks, which are of less interest to us here.
 
 <!--# Moreover, if we were to work these automatically update the limits when a process shift is detected. and automatic updates based on a three or fewer points the process too sensitive to data quality issues or immaterial shocks. -->
 
@@ -1566,13 +1564,13 @@ With any process change comes a probable change in the normal performance limits
 
 <!--# We have illustrated in the figures below.   implemented these rules with the aid of the R package -->
 
-In the figures below, we have illustrated how the process mean and control limits of an X chart might evolve over an extended time period. Using data from the ED at Salford Royal, we display a time series (of the odds of admission) at 12 weeks, 26 weeks, 28 weeks, and 40 weeks from the start of measurement. We implemented our chosen rules with the aid of the `NHSRplotthedots` R package.[^25]
+In the figures below, we have illustrated how the process mean and control limits of an X chart might evolve over an extended time period. Using data from the ED at Salford Royal, we display a time series (of the odds of admission) at 12 weeks, 26 weeks, 28 weeks, and 40 weeks from the start of measurement. We implemented our chosen rules with the aid of the `NHSRplotthedots` R package.[^24]
 
-[^25]: Smith T, Reading C, Wellesley-Miller S, Turner Z, Jemmett T, Mainey C, MacKintosh J, Fabietti M, Barton F (2025). *NHSRplotthedots: Draw XmR Charts for NHS 'Making Data Count' Programme*. R package version 0.2.2, [https://nhsrplotthedots.nhsrcommunity.com](https://nhsrplotthedots.nhsrcommunity.com/).
+[^24]: Smith T, Reading C, Wellesley-Miller S, Turner Z, Jemmett T, Mainey C, MacKintosh J, Fabietti M, Barton F (2025). *NHSRplotthedots: Draw XmR Charts for NHS 'Making Data Count' Programme*. R package version 0.2.2, [https://nhsrplotthedots.nhsrcommunity.com](https://nhsrplotthedots.nhsrcommunity.com/).
 
-@fig-limit-reset-1 shows the situation 12 weeks after measurement of the admission threshold begins. To establish a robust mean and process limits, the `NHSRplotthedots` package requires at least 12 points in the series.[^26] The process limits and mean will continue to be refined until there are 20 points in the series.
+@fig-limit-reset-1 shows the situation 12 weeks after measurement of the admission threshold begins. To establish a robust mean and process limits, the `NHSRplotthedots` package requires at least 12 points in the series.[^25] The process limits and mean will continue to be refined until there are 20 points in the series.
 
-[^26]: There is no consensus on the number of points in the needed to establish reliable limits. Sources suggest between 5 and 30 points. A number closer to the upper value of this range will produce more robust limits. The `NHSRplotthedots` package constructs limits based on 12+ points. If there are fewer than 12 points in a series, "trial limits" will be drawn. See <https://nhsrplotthedots.nhsrcommunity.com/articles/number-of-points-required.html> for further details.
+[^25]: There is no consensus on the number of points in the needed to establish reliable limits. Sources suggest between 5 and 30 points. A number closer to the upper value of this range will produce more robust limits. The `NHSRplotthedots` package constructs limits based on 12+ points. If there are fewer than 12 points in a series, "trial limits" will be drawn. See <https://nhsrplotthedots.nhsrcommunity.com/articles/number-of-points-required.html> for further details.
 
 In @fig-limit-reset-2, we see that the results from weeks 23 to 26 are above the upper control limit. Special cause variation is therefore present, but, based on the rules we are using, there is no recalculation of the process mean and limits at this time. However, we do see a trend of 5 consecutive points above the process mean. If the points in the next two weeks continue this trend then the mean and limits will be reset.
 
