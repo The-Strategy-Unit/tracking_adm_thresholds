@@ -141,11 +141,11 @@ df |>
 
 # Executive Summary
 
-Most patients who are admitted to hospital in an emergency will first pass through an Emergency Department (ED). Decisions about whether to admit a patient fall to ED clinicians. A clinician will make a decision having considered the needs of the patient and the resources available - within and outside of hospital - to manage the patient’s needs effectively and promptly. Collectively, these decisions, which we might think of as defining a threshold for admission, influence the rate of emergency admissions within a local area.
+Most patients who are admitted to hospital in an emergency will have first passed through an Emergency Department (ED). For every patient in the ED, a clinician must decide whether admission is necessary, weighing a patient’s clinical needs against the availability of resources to manage those needs, either in hospital or in the community. Whether considered at provider or at national level, these individual decisions combine to create an effective threshold for admission. Admission thresholds affect the rate of emergency admissions and, in turn, influence hospital bed occupancy rates.
 
-Admission rates, in turn, influence bed occupancy rates. Average bed occupancy rates in England have hovered around 91% for the last few years, much higher than is generally regarded as optimal for patient safety and the efficient management of patient flow. If the Neighbourhood NHS programme is successful in shifting care from hospital to community settings, then we might expect the pressure on hospital beds to decrease. There is a concern, however, that spare capacity will lead to an uncontrolled lowering of admission thresholds, and that hospital beds freed up by community services will be filled by patients who would not otherwise have been admitted. This would undermine efforts to redirect resources from hospital to community settings.
+Average bed occupancy rates in England have hovered around 91% for the last few years. This level is much higher than one generally regarded as optimal for patient safety and the efficient management of patient flow. With its focus on shifting care from hospital to community settings, there is an expectation that the National Neighbourhood Health Implementation Programme (NNHIP) will decrease the pressure on hospital beds. However, since decisions to admit a patient may be influenced by resource levels, it is possible that the freeing of hospital capacity due to the NNHIP will lead to an uncontrolled lowering of admission thresholds. In other words, hospital beds effectively freed by moving certain activities into the community will be filled by patients who would not otherwise have been admitted. Efforts to redirect resources from hospital to community settings would thus be undermined.
 
-In this report, we address two questions relating to clinical admission thresholds within emergency departments. To set the scene, we examine whether admission thresholds have changed in recent years. In the second part of the report, we examine the feasibility of routinely tracking these thresholds within individual emergency departments, so that local health systems can stay informed about this important factor.
+In this report, we address two questions relating to clinical admission thresholds within emergency departments. To set the scene, we set out to answer whether admission thresholds have changed in recent years. In the second part of the report, we examine whether it is feasible to routine track these thresholds within individual emergency departments, so that local health systems can stay informed about this important factor.
 
 **Key findings and implications**
 
@@ -349,13 +349,13 @@ We mapped the remaining chief complaint codes to the ECDS Refset diagnosis table
 
 We therefore captured the clinical condition (where given) of all patients in the sample, at 3 Levels of detail, in a total of 66 categories. On examining the trends for these 66 categories, we saw evidence of codes being re-classified or dropped entirely. We attempted to reconcile these discontinuities, by:
 
--   Uniting different codes for urinary tract infections
+- Uniting different codes for urinary tract infections
 
--   Uniting different codes for injuries of the upper, and lower, extremities
+- Uniting different codes for injuries of the upper, and lower, extremities
 
--   Moving "Lower limb pain" and "Upper limb pain" from Level 2 to Musculoskeletal conditions in Level 1.
+- Moving "Lower limb pain" and "Upper limb pain" from Level 2 to Musculoskeletal conditions in Level 1.
 
--   Moving "Drug and alcohol abuse" from Level 1 to "Substance misuse" in Level 2.
+- Moving "Drug and alcohol abuse" from Level 1 to "Substance misuse" in Level 2.
 
 These changes left us with 62 categories indicating the clinical features of a patient’s condition. The proportion of attendances covered at each level of the diagnosis hierarchy is shown in @tbl-diag-propos, whilst the 62 categories, and plots of their appearance over time, can be seen in @fig-diag-ts-l3, @fig-diag-ts-l2, and @fig-diag-ts-l1 .
 
@@ -1323,9 +1323,9 @@ locations = cells_column_labels(columns = level)
 
 In terms of variable selection, our major decision concerned two variables that each indicate a clinician's assessment of the patient's condition. These are:
 
--   The *primary diagnosis* variable (hereafter referred to as *diagnosis*) indicates the main condition treated or investigated during the patient's stay in the ED.
+- The *primary diagnosis* variable (hereafter referred to as *diagnosis*) indicates the main condition treated or investigated during the patient's stay in the ED.
 
--   The *chief complaint* variable (hereafter referred to as *complaint*), on the other hand, refers to "[the primary problem a patient is presenting with, as initially assessed by a clinician](https://www.england.nhs.uk/guidance-for-emergency-departments-initial-assessment/)."
+- The *chief complaint* variable (hereafter referred to as *complaint*), on the other hand, refers to "[the primary problem a patient is presenting with, as initially assessed by a clinician](https://www.england.nhs.uk/guidance-for-emergency-departments-initial-assessment/)."
 
 These variables are particularly important because a clinician's assessment of the patient's condition is likely to be the strongest predictor of admission. We must choose just one, however, in a given model. This is due to the likely relationship (multicollinearity) between these two variables.
 
@@ -1421,9 +1421,9 @@ The XmR chart is a type of Statistical Process Control (SPC) chart. We can use X
 
 In @fig-xmr, we use an XmR chart to display how the odds of admission via ED (at St. George's Hospital, Tooting) have varied over time. The XmR chart has two components, the “X” plot and the “mR” plot:
 
--   The “X” plot (at the top of the chart) displays how the outcome of interest changes over time. Three horizontal lines represent the mean value and the upper and lower “control limits" (at 3 sigma from the mean value).[^18] These control limits define the expected range of variation for the process in question. If a point falls between the upper and lower control limits, then the result is considered within the bounds of natural - or “common cause” - variation, and the process is deemed stable. If, on the other hand, a point is outside the control limits, this indicates that the difference from the process mean should not be attributed to random variation. In SPC terms, there is a “special cause” for the variation.
+- The “X” plot (at the top of the chart) displays how the outcome of interest changes over time. Three horizontal lines represent the mean value and the upper and lower “control limits" (at 3 sigma from the mean value).[^18] These control limits define the expected range of variation for the process in question. If a point falls between the upper and lower control limits, then the result is considered within the bounds of natural - or “common cause” - variation, and the process is deemed stable. If, on the other hand, a point is outside the control limits, this indicates that the difference from the process mean should not be attributed to random variation. In SPC terms, there is a “special cause” for the variation.
 
--   The “mR” (moving range) plot, is displayed below the X plot, on an identical horizontal axis. This chart emphasises the process variation. Horizontal lines on the plot show the mean value and the upper control limit of the variation (at 3 sigma from the mean).[^19] A large change - positive or negative - between consecutive points in the X plot may result in an mR point that is above the upper control limit. In this case, the change in the outcome of interest (between consecutive points) is greater than might be expected for this process.
+- The “mR” (moving range) plot, is displayed below the X plot, on an identical horizontal axis. This chart emphasises the process variation. Horizontal lines on the plot show the mean value and the upper control limit of the variation (at 3 sigma from the mean).[^19] A large change - positive or negative - between consecutive points in the X plot may result in an mR point that is above the upper control limit. In this case, the change in the outcome of interest (between consecutive points) is greater than might be expected for this process.
 
 [^18]: To obtain control limits with the standard calculations, values should be normally distributed. We therefore performed these calculations on the the raw model output values (log odds ratios), which are approximately normal, and only then transformed them to the linear scale.
 
@@ -1534,13 +1534,13 @@ If we were monitoring the admission threshold at a given ED on a regular basis, 
 
 The [Making Data Count (NHSE, 2019)](https://www.england.nhs.uk/wp-content/uploads/2019/12/making-data-count-getting-started-2019.pdf) publication outlines four SPC rules that can be applied to the X chart to identify a process change. These are the observation of either:
 
--   A single point further than 3 sigma from the process mean (i.e. outside the control limits)
+- A single point further than 3 sigma from the process mean (i.e. outside the control limits)
 
--   Any two of three consecutive points further than 2 sigma from the process mean
+- Any two of three consecutive points further than 2 sigma from the process mean
 
--   Seven consecutive points all above / all below the process mean
+- Seven consecutive points all above / all below the process mean
 
--   \[Seven\] points with consecutively increasing / decreasing values [^21]
+- \[Seven\] points with consecutively increasing / decreasing values [^21]
 
 [^21]: *Making Data Count* specifies "six consecutive points." However, we have used the `NHSRplotthedots` package to label process changes, which uses a rule of seven consecutive increasing or decreasing points. In any case, limit changes based on consecutive increasing/decreasing points are far less common than those triggered by the "seven consecutive points all above / all below the process mean" rule.
 
