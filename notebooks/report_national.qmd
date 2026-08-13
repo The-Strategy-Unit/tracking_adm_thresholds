@@ -1,6 +1,6 @@
 ---
-title: "Hospital Admission Thresholds Within Emergency Departments"
-subtitle: "DRAFT REPORT<br>Spring 2026"
+title: "Tracking Hospital Admission Thresholds Within Emergency Departments"
+subtitle: "<br>Summer 2026"
 author:
   - name: Steven Wyatt
     email: swyatt@nhs.net
@@ -141,23 +141,23 @@ df |>
 
 # Executive Summary
 
-Most patients who are admitted to hospital in an emergency will have first passed through an Emergency Department (ED). For every patient in the ED, a clinician must decide whether admission is necessary, weighing a patient’s clinical needs against the availability of resources to manage those needs, either in hospital or in the community. Whether considered at provider or at national level, these individual decisions combine to create an effective threshold for admission. Admission thresholds affect the rate of emergency admissions and, in turn, influence hospital bed occupancy rates.
+Most patients who are admitted to hospital in an emergency will have first passed through an Emergency Department (ED). For every ED patient, a clinician must decide whether admission is necessary, weighing a patient’s clinical needs against the availability of resources to manage those needs, either in hospital or in the community. These individual decisions - to admit or not - can be combined, at any level, to create an effective threshold for admission. An admission threshold affects the rate of emergency admissions and, in turn, influences hospital bed occupancy rates.
 
-Average bed occupancy rates in England have hovered around 91% for the last few years. This level is much higher than one generally regarded as optimal for patient safety and the efficient management of patient flow. With its focus on shifting care from hospital to community settings, there is an expectation that the National Neighbourhood Health Implementation Programme (NNHIP) will decrease the pressure on hospital beds. However, since decisions to admit a patient may be influenced by resource levels, it is possible that the freeing of hospital capacity due to the NNHIP will lead to an uncontrolled lowering of admission thresholds. In other words, hospital beds effectively freed by moving certain activities into the community will be filled by patients who would not otherwise have been admitted. Efforts to redirect resources from hospital to community settings would thus be undermined.
+That relationship matters because average bed occupancy in England has hovered around 91% for the last few years. This is well above the level generally regarded as optimal for patient safety and the efficient management of patient flow. Reducing this pressure is a central aim of current NHS policy: the Ten Year Health Plan for England identifies the transfer of activity "from hospital to community" as one of its three strategic shifts, with a new neighbourhood health service intended to bring care closer to home and prevent unnecessary hospital admissions. However, because decisions to admit may be influenced by bed occupancy levels, freeing hospital capacity in this way could lead to an uncontrolled lowering of admission thresholds. In other words, hospital beds freed by moving certain activities into the community could be filled by patients who would not otherwise have been admitted. This would undermine the shift that current policy intends to deliver.
 
-In this report, we address two questions relating to clinical admission thresholds within emergency departments. To set the scene, we set out to answer whether admission thresholds have changed in recent years. In the second part of the report, we examine whether it is feasible to routine track these thresholds within individual emergency departments, so that local health systems can stay informed about this important factor.
+In this report, we address two questions relating to clinical admission thresholds within emergency departments. To set the scene, we set out to answer whether admission thresholds have changed in recent years. In the second part of the report, we examine whether it is feasible to routinely track these thresholds within individual emergency departments, so that local health systems can stay informed about this important factor.
 
 **Key findings and implications**
 
-Our first analysis covers attendances taking place between April 2019 and March 2025. We examined a broadly representative subset of 16 Type 1 (consultant-led 24/7) emergency departments in England. We controlled for a patient’s age, sex, ethnicity, deprivation, acuity, diagnosis, arrival mode, referral source, and time (day of the week and hour) of attendance.
+Our first analysis, detailed in Part 1, covers attendances taking place between April 2019 and March 2025. We examined a broadly representative subset of 16 Type 1 (consultant-led 24/7) emergency departments in England. We controlled for a patient’s age, sex, ethnicity, deprivation, acuity, diagnosis, arrival mode, referral source, and time (day of the week and hour) of attendance.
 
 An earlier study found that admission thresholds increased steadily and substantially between 2010 and 2015. This new analysis suggests that these strong secular trends appear to have ended by 2019, and have been replaced by modest fluctuations in thresholds, without a clear overall direction.
 
 Having adjusted for clinical casemix, we find that admission thresholds fell moderately but abruptly at the start of the COVID-19 pandemic, returning to pre-pandemic levels by April 2022. During the pandemic period, patients were approximately 10% more likely to be admitted, on average, than patients with similar needs presenting at other times.
 
-Either side of the COVID-19 pandemic and recovery period, we found that admission thresholds were more stable. Most changes that took place quarter-on-quarter may well be explained by chance alone, although our results suggest some systematic, non-seasonal patterns. Thresholds were highest in the months immediately before the pandemic and during the period from July 2022 to June 2023. Thresholds then fell until March 2024 before rising again until December 2024. Although the odds of admission varied only modestly outside the pandemic and recovery period, the changes in this time are likely to have materially influenced admission decisions for tens of thousands of patients each year. Further work would be required to understand whether these modest but nonetheless material changes in admission thresholds were random, intentional, or an organic response to changes in contextual factors such as bed availability.
+Either side of the COVID-19 pandemic and recovery period, we found that admission thresholds were more stable. Most changes that took place quarter-on-quarter may well be explained by chance alone, although our results suggest some systematic, non-seasonal patterns. Thresholds were highest in the months immediately before the pandemic and from July 2022 to June 2023. Thresholds then fell until March 2024 before rising again until December 2024. Although the odds of admission varied only modestly outside the pandemic and recovery period, the changes in this time are likely to have materially influenced admission decisions for tens of thousands of patients. Further work would be required to understand whether these modest but nonetheless material changes in admission thresholds were random, intentional, or an organic response to changes in contextual factors such as bed availability.
 
-Ultimately, if healthcare systems are to succeed in redirecting resources from hospital to community settings, they will likely need to gain greater control over admission thresholds. Our work in the second part of this report suggests that it may be feasible to design statistical models and associated tools to allow health systems to track casemix-adjusted admission thresholds in individual EDs.
+Ultimately, if healthcare systems are to succeed in redirecting resources from hospital to community settings, they will likely need to gain greater control over admission thresholds. Our work in Part 2 of this report suggests that it may be feasible to design statistical models and associated tools to allow health systems to track casemix-adjusted admission thresholds in individual EDs.
 
 The models we propose are moderately complex. Moreover, since data quality varies considerably by site, each department-level model must be tuned to take account of the quality of a department’s Emergency Care Data Set submissions. Variation in the consistency of recording practices between sites also means that we should not compare the model admission thresholds across EDs.
 
@@ -1376,10 +1376,26 @@ We reasoned that the coefficients of the interaction terms should indicate non-c
 ## | fig-asp: 0.618
 ## | out-width: "85%"
 
-
-df_risk_plots <- readRDS(here("data", "251110_df_risk_plots.RDS"))
+df_risk_plots <- readRDS(here("data", "251110_df_risk_plots.RDS")) |> 
+  # RE-RUN PLOT CODE TO ACCOUNT FOR GGPLOT 2 RE-WRITE SINCE THE SAVE:
+  mutate(plot_risk = pmap(
+    list(data_risk, ed_name, row_no),
+    function(df, x, y){
+      df |>
+        ggplot(aes(date, odds)) +
+        theme_minimal() +
+        geom_pointrange(aes(ymin = lci, ymax = uci)) +
+        geom_hline(aes(yintercept = upp_lim[[1]]), lty = "dashed")+
+        geom_hline(aes(yintercept = low_lim[[1]]), lty = "dashed")+
+        geom_blank(aes(y = 0))+
+        # TODO LOG SCALE !!
+        labs(title = str_c(y, ". ", x))
+      
+    }
+  )) 
   
-  df_risk_plots$plot_risk[[7]] +
+  df_risk_plots$plot_risk[[7]] + 
+    # ggplot()+
     scale_y_log10() +
     annotate(label = "0.5 x median", "text", y = 0.6, x = as_date("2025-05-01"),  col = "grey20")+
     annotate(label = "2 x median", "text", y = 2.3, x = as_date("2025-05-01"),  col = "grey20")+
@@ -1443,7 +1459,76 @@ Looking at @fig-xmr, it appears (from the X plot) that the casemix-adjusted odds
 #| out-width: "85%"
 
 
-df_xmr_plots <- readRDS((here::here("data", "251110_df_plots.rds")))
+df_xmr_plots <- readRDS((here::here("data", "251110_df_plots.RDS"))) |> 
+  # RE-RUN PLOT CODE TO ACCOUNT FOR GGPLOT 2 RE-WRITE SINCE THE SAVE:
+  mutate(plot_x = pmap(
+    list(prep_xmr, data_flag, ed_name),
+    function(df1, df2, x){
+      df1 |> 
+        left_join(df2, join_by(date)) |> 
+        ggplot(aes(date, estimate))+
+        geom_hline(aes(yintercept = x_mean[1]), lty = "dashed")+
+        geom_hline(aes(yintercept = ucl[1]), lty = "dashed")+
+        geom_hline(aes(yintercept = lcl[1]), lty = "dashed")+
+        # annotate("text", x = param_date_start , y = 1.1*max(df1$estimate), hjust = 0, label = "↑ Higher odds = Lower admission threshold ↓", size = 2)+
+        geom_point(aes(colour = flag_risk)) +
+        scale_color_manual(
+          values = c("grey20", "indianred"),
+          name = "Evidence of non-constant risks:",
+          labels = c("No", "Yes")
+        )+
+        geom_line()+
+        theme_minimal()+
+        scale_y_log10()+
+        theme(
+          axis.title = element_text(size = 7),
+          # legend.title = element_blank(),
+          legend.position = "none"
+        )+
+        scale_x_date(date_breaks = "month", date_labels = "%b %Y")+
+        labs(
+          title = str_c(x, "\n"),
+          # title = str_c(y, ". ", x)
+          x = "\nDate",
+          y = str_c(
+            "Casemix-adjusted odds of admission (log scale)\n(Reference category: w/c April 7th 2025)\n"
+          )
+        )
+    }
+  )) |> 
+  mutate(plot_mr = pmap(
+    list(prep_xmr, data_flag, ed_name),
+    function(df1, df2, x){
+      df1 |> 
+        left_join(df2, join_by(date)) |> 
+        # THE FIRST MR WILL BE NA AND DON'T WANT THIS ON SCALE:
+        filter(!is.na(mr)) |> 
+        ggplot(aes(date, mr))+
+        geom_hline(aes(yintercept = mr_mean[1]), lty = "dashed")+
+        geom_hline(aes(yintercept = ucl_mr[1]), lty = "dashed")+
+        geom_point(aes(colour = flag_risk)) +
+        scale_color_manual(
+          values = c("grey20", "indianred3"),
+          name = "Evidence of non-constant risks:",
+          labels = c("No", "Yes")
+        )+
+        geom_line()+
+        theme_minimal()+
+        # scale_y_log10()+
+        theme(
+          axis.title = element_text(size = 7),
+          legend.position = "bottom",
+          legend.title = element_text(size = 7),
+          legend.text = element_text(size = 7)
+        )+
+        scale_x_date(date_breaks = "month", date_labels = "%b %Y")+
+        labs(
+          x = "\nDate",
+          y = str_c(
+            "\nMoving range (of odds)"
+          )
+        )
+    }))
 
 a <- df_xmr_plots$plot_x[[7]]+
   geom_point(colour = "grey20") +
